@@ -1,7 +1,13 @@
-#ifndef NEURALNET_CUH
-#define NEURALNET_CUH
+#ifndef NEURALNET_H
+#define NEURALNET_H
 
-#include "ParallelNN.h"
+typedef enum Activation {
+	binary_step,
+	sigmoid,
+	// tanh,
+	relu,
+	leaky_relu
+} Activation ;
 
 class NeuralNet {
 	private:
@@ -16,4 +22,4 @@ class NeuralNet {
 		void activation(double* x, int len, Activation f);
 };
 
-#endif	// NEURALNET_CUH
+#endif	// NEURALNET_H

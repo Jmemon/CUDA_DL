@@ -15,7 +15,7 @@ INC_DIR=include
 OBJ_DIR=bin
 
 SRCS=$(SRC_DIR)/main.cu $(SRC_DIR)/NeuralNet.cu $(SRC_DIR)/ParallelNN.cu
-DEPS=$(INC_DIR)/NeuralNet.h $(INC_DIR)/ParallelNN.h
+DEPS=$(INC_DIR)/NeuralNet.h $(INC_DIR)/ParallelNN.cuh
 OBJS=$(OBJ_DIR)/main.o $(OBJ_DIR)/NeuralNet.o $(OBJ_DIR)/ParallelNN.o
 
 .PHONY: clean
@@ -26,8 +26,8 @@ OBJS=$(OBJ_DIR)/main.o $(OBJ_DIR)/NeuralNet.o $(OBJ_DIR)/ParallelNN.o
 
 # Compile .cpp and .cu files into .o files
 $(OBJS): $(SRCS) $(DEPS)
-	@$(NVCC) --gpu-architecture=sm_30 --device-c $< -o $@
-	@$(NVCC) --gpu-architecture=sm_30 --device-link $@ -o $(OBJ_DIR)/link.o
+	@$(NVCC) --gpu-architecture=compute_60 --gpu-code=sm_60 --relocatable-device-code=true  --device-c $< -o $@
+	@$(NVCC) --gpu-architecture=compute_60 --gpu-code=sm_60 --device-link $@ -o $(OBJ_DIR)/link.o
 
 # Link .o files to get target executable
 main: $(OBJS)

@@ -1,5 +1,4 @@
 #include "../include/NeuralNet.h"
-#include "../include/ParallelNN.h"
 #include <stdlib.h>
 
 int main(int argc, char *argv[]) {

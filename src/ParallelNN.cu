@@ -1,4 +1,5 @@
-#include "../include/parallelNN.h"
+#include "../include/ParallelNN.cuh"
+#include "../include/NeuralNet.h"
 #include <curand.h>
 #include <curand_kernel.h>
 
@@ -10,6 +11,11 @@ __global__ void randInit(double *w) {
 	curand_init(idx, 0, 0, &state);	// seed, seq num, offset, curandState_t ptr
 
 	w[idx] = (double)(curand(&state) % 10000) / 10000;
+}
+
+void randInitGPU(double *w ) {
+	randInit<<<1,1 >>>(w);
+	cudaDeviceSynchronize();
 }
 
 __device__ double max(double a, double b) {
