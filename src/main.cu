@@ -1,4 +1,5 @@
 #include "../include/NeuralNet.h"
+#include "../include/Activation.cuh"
 #include <stdlib.h>
 
 int main(int argc, char *argv[]) {
@@ -15,7 +16,7 @@ int main(int argc, char *argv[]) {
 	funcs[1] = sigmoid;
 	funcs[2] = relu;
 
-	NeuralNet nn = NeuralNet(layers, funcs, num_layers);
+	NeuralNet nn(layers, funcs, num_layers);
 
 	return 0;
 }

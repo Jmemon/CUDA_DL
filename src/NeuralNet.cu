@@ -1,6 +1,8 @@
 #include "../include/NeuralNet.h"
+#include "../include/Activation.cuh"
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 
 NeuralNet::NeuralNet(int *l, Activation *f, int n) {
 	
@@ -39,7 +41,7 @@ void NeuralNet::initWeights() {
 		cudaEventCreate(&stop);
 
 		cudaEventRecord(start);
-		randInit<<<BLOCKS, THREADS>>>(*(d_w + i));
+		randInitGPU(*(d_w + i), BLOCKS, THREADS);
 		cudaEventRecord(stop);
 
 		cudaEventSynchronize(stop);
@@ -75,7 +77,7 @@ void NeuralNet::printWeights(double* w, int l1, int l2) const {
 
 void NeuralNet::activation(double *x, int len, Activation f) {
 	
-	size_t SIZE = len * sizeof(double)
+	size_t SIZE = len * sizeof(double);
 
 	double *d_x;
 	cudaMalloc((void **) &d_x, SIZE);
@@ -91,30 +93,30 @@ void NeuralNet::activation(double *x, int len, Activation f) {
 	
 	if (f == binary_step) {
 		cudaEventRecord(start);
-		binary_step<<<BLOCKS, THREADS>>>(d_x);
+		binaryStepGPU(d_x, BLOCKS, THREADS);	
 		cudaEventRecord(stop);
 	} /*else if (f == sigmoid) {
 		cudaEventRecord(start);
 		sigmoid<<<BLOCKS, THREADS>>>(d_x);
 		cudaEventRecord(stop);
-	*/} else if (f == relu) {
+	}*/ else if (f == relu) {
 		cudaEventRecord(start);
-		relu<<<BLOCKS, THREADS>>>(d_x);
+		reluGPU(d_x, BLOCKS, THREADS);
 		cudaEventRecord(stop);
 	} else if (f == leaky_relu) {
 		cudaEventRecord(start);
-		leaky_relu<<<BLOCKS, THREADS>>>(d_x);
+		leakyReluGPU(d_x, BLOCKS, THREADS);
 		cudaEventRecord(stop);
 	} else {
-		cout << "Activation function must be binary_step, relu, or leaky_relu" << endl;"
+		std::cout << "Activation function must be binary_step, relu, or leaky_relu" << std::endl;
 	}
 
 	cudaEventSynchronize(stop);
 
 	cudaMemcpy(x, d_x, SIZE, cudaMemcpyDeviceToHost);
 
-	double ms;
+	float ms;
 	cudaEventElapsedTime(&ms, start, stop);
 
-	cout << "Activation Time: " << ms << endl;
+	std::cout << "Activation Time: " << ms << std::endl;
 }

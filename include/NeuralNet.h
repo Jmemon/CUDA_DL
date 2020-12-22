@@ -1,13 +1,15 @@
 #ifndef NEURALNET_H
 #define NEURALNET_H
 
+#include "Activation.cuh"
+
 typedef enum Activation {
 	binary_step,
 	sigmoid,
 	// tanh,
 	relu,
 	leaky_relu
-} Activation ;
+} Activation;
 
 class NeuralNet {
 	private:
