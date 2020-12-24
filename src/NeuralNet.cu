@@ -20,48 +20,6 @@ NeuralNet::NeuralNet(const std::vector<int> l, const std::vector<Activation> f)
 
 } // end NeuralNet
 
-/* void NeuralNet::initWeights() {
-
-	int i;
-	double** d_w = (double **)malloc((num_layers - 1) * sizeof(double *));
-
-	for (i = 0; i < num_layers - 1; i++) {
-
-		int num_weights = layers[i] * layers[i + 1];
-		size_t SIZE = num_weights * sizeof(double);
-		
-		cudaMalloc((void **)&(*(d_w + i)), SIZE);
-
-		cudaMemcpy(*(d_w + i), *(weights + i), SIZE, cudaMemcpyHostToDevice);
-
-		dim3 BLOCKS(num_weights / 1024 + 1, 1, 1);
-		dim3 THREADS(num_weights / (num_weights / 1024 + 1), 1, 1);
-
-		cudaEvent_t start, stop;
-		cudaEventCreate(&start);
-		cudaEventCreate(&stop);
-
-		cudaEventRecord(start);
-		randInitGPU(*(d_w + i), BLOCKS, THREADS);
-		cudaEventRecord(stop);
-
-		cudaEventSynchronize(stop);
-
-		cudaMemcpy(*(weights + i), *(d_w + i), SIZE, cudaMemcpyDeviceToHost);
-
-		float ms;
-		cudaEventElapsedTime(&ms, start, stop);
-
-		printf("W%d Init Time: %f \n", i + 1, ms);
-		printf("W%d Size: %d x %d \n\n", i + 1, layers[i + 1], layers[i]);
-
-		cudaFree(*(d_w + i));
-	}
-
-	free(d_w);
-
-} */
-
 void NeuralNet::printWeights(int l) const 
 {
 
@@ -108,7 +66,7 @@ void NeuralNet::activation(std::vector<double> x, Activation f)
 		cudaEventRecord(stop);
 	} /*else if (f == sigmoid) {
 		cudaEventRecord(start);
-		sigmoid<<<BLOCKS, THREADS>>>(d_x);
+		sigmoidGPU(d_x, BLOCKS, THREADS);
 		cudaEventRecord(stop);
 	}*/ else if (f == relu) {
 		cudaEventRecord(start);
