@@ -1,25 +1,26 @@
 #include "../include/NeuralNet.h"
 #include "../include/Activation.cuh"
-#include <stdlib.h>
-#include <stdio.h>
+#include <vector>
 #include <iostream>
 
-NeuralNet::NeuralNet(int *l, Activation *f, int n) {
+NeuralNet::NeuralNet(const vector<int> l, const vector<Activation> f) 
+	: num_layers(l.size()), layers(l), funcs(f)
+{
 	
-	num_layers = n;
-	layers = l;
-	funcs = f;
+	for (int i = 0; i < num_layers - 1; i++) 
+	{
+		vector<double> tmp(l[i] * l[i + 1] , 0);
+		
+		for (int j = 0; j < tmp.size(); j++)
+			tmp[j] = (double)(rand() % 10000) / 10000;
 
-	weights = (double **)malloc((num_layers - 1) * sizeof(double *));
-	for (int i = 0; i < num_layers - 1; i++) {
-		*(weights + i) = (double *)malloc(layers[i] * layers[i + 1] * sizeof(double));
-	}
+		weights.push_back(tmp);
 
-	initWeights();
+	} // end for
 
-}
+} // end NeuralNet
 
-void NeuralNet::initWeights() {
+/* void NeuralNet::initWeights() {
 
 	int i;
 	double** d_w = (double **)malloc((num_layers - 1) * sizeof(double *));
@@ -59,30 +60,31 @@ void NeuralNet::initWeights() {
 
 	free(d_w);
 
-}
+} */
 
-void NeuralNet::printWeights(double* w, int l1, int l2) const {
-	
-	for (int i = 0; i < l2; i++) {
+void NeuralNet::printWeights(vector<double> w, int l1, int l2) const 
+{	
+	for (int i = 0; i < l2; i++) 
+	{	
+		for (int j = 0; j < l1; j++) 
+			std::cout << w[i * l1 + j] << "  ";			
 		
-		for (int j = 0; j < l1; j++) {
-			printf("%f  ", w[i * l1 + j]);
-		}
-		printf("\n");
+		std::cout << std::endl;
 
-	}
-	printf("\n");
+	} // end for
 
-}
+	std::cout << std::endl;
 
-void NeuralNet::activation(double *x, int len, Activation f) {
-	
-	size_t SIZE = len * sizeof(double);
+} // end printWeights
+
+void NeuralNet::activation(vector<double> x, Activation f) 
+{	
+	size_t SIZE = x.size() * sizeof(double);
 
 	double *d_x;
 	cudaMalloc((void **) &d_x, SIZE);
 
-	cudaMemcpy(d_x, x, SIZE, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_x, x.data(), SIZE, cudaMemcpyHostToDevice);
 
 	dim3 BLOCKS(len / 1024 + 1, 1, 1);
 	dim3 THREADS(len / (len / 1024 + 1), 1, 1);
@@ -113,10 +115,11 @@ void NeuralNet::activation(double *x, int len, Activation f) {
 
 	cudaEventSynchronize(stop);
 
-	cudaMemcpy(x, d_x, SIZE, cudaMemcpyDeviceToHost);
+	cudaMemcpy(x.data(), d_x, SIZE, cudaMemcpyDeviceToHost);
 
 	float ms;
 	cudaEventElapsedTime(&ms, start, stop);
 
 	std::cout << "Activation Time: " << ms << std::endl;
-}
+
+} // end activation

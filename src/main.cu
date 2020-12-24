@@ -1,22 +1,21 @@
 #include "../include/NeuralNet.h"
 #include "../include/Activation.cuh"
-#include <stdlib.h>
+#include <vector>
+
 
 int main(int argc, char *argv[]) {
 	
-	int num_layers = 3;
-	
-	int* layers = (int *)malloc(num_layers * sizeof(int));
+	vector<int> layers(3, 0);
 	layers[0] = 100;
 	layers[1] = 500;
 	layers[2] = 10;
 
-	Activation* funcs = (Activation *)malloc(num_layers * sizeof(Activation));
-	funcs[0] = sigmoid;
-	funcs[1] = sigmoid;
+	vector<Activation> funcs(3, relu);
+	funcs[0] = binary_step;
+	funcs[1] = relu;
 	funcs[2] = relu;
 
-	NeuralNet nn(layers, funcs, num_layers);
+	NeuralNet nn(layers, funcs);
 
 	return 0;
 }
