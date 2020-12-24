@@ -17,24 +17,25 @@ class NeuralNet {
 		const int num_layers;
 		// number of layers in neural net
 
-		const vector<int> layers; //int *layers;
+		const std::vector<int> layers; 
 		// position i containts num nodes in layer i (first layer is layer 0)
 
-		const vector<vector<double> > weights; //double **weights;
+		std::vector<std::vector<double> > weights; 
 		// vector containing weight matrixes in row major form (vect of vects)
 
-		const vector<Activation> funcs; //Activation *funcs;
+		const std::vector<Activation> funcs; 
 		// vector containing activation func to apply to (W_i)x_i at position i
 
 	public:
-		NeuralNet(vector<int> l, vector<Activation> f); // int n);	
+		NeuralNet(std::vector<int> l, std::vector<Activation> f); 
 		// contructor which initializes data members
 		// takes vectors of layer sizes and activation functions as input
 
-		void printWeights(vector<double> w, int l1, int l2) const;		
+		void printWeights(int l) const;		
 		// prints the weights
+		// l specifies which layers' weights (0 to num_layers - 1)
 
-		void activation(vector<double> x, int len, Activation f);
+		void activation(std::vector<double> x, Activation f);
 		// applies activation function to x
 
 };
