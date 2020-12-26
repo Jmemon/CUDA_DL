@@ -14,9 +14,6 @@ typedef enum Activation {
 
 class NeuralNet {
 	private:
-		const int num_layers;
-		// number of layers in neural net
-
 		const std::vector<int> layers; 
 		// position i containts num nodes in layer i (first layer is layer 0)
 
@@ -27,16 +24,28 @@ class NeuralNet {
 		// vector containing activation func to apply to (W_i)x_i at position i
 
 	public:
-		NeuralNet(std::vector<int> l, std::vector<Activation> f); 
+		NeuralNet(std::vector<int> &l, std::vector<Activation> &f); 
 		// contructor which initializes data members
 		// takes vectors of layer sizes and activation functions as input
 
+		void activation(std::vector<double> &x, Activation f);
+		// applies activation function to x
+	
+		void forwardPass(std::vector<double> &x);
+		// x can be a matrix in row-major form
+		// We use layers[0] to determine the batchsize
+		// doesn't return anything, but results in x being transformed to NN output
+	
+		void printNN() const;
+		// prints info about the neural net
+		// Layer Sizes
+		// Activation Funcs at each layer
+		// Weight Matrix Dims
+		// Error Function
+
 		void printWeights(int l) const;		
 		// prints the weights
-		// l specifies which layers' weights (0 to num_layers - 1)
-
-		void activation(std::vector<double> x, Activation f);
-		// applies activation function to x
+		// l specifies the layer (0 to num_layers - 2)
 
 };
 

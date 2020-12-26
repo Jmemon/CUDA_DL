@@ -2,14 +2,14 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
-__global__ void randInit(double *w) {
+__global__ void randInit(double *x) {
 
 	int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
 	curandState_t state;
 	curand_init(idx, 0, 0, &state);	// seed, seq num, offset, curandState_t ptr
 
-	w[idx] = (double)(curand(&state) % 10000) / 10000;
+	x[idx] = (double)(curand(&state) % 10000) / 10000;
 }
 
 void randInitGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns) {
@@ -19,7 +19,7 @@ void randInitGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns) {
 
 __device__ double maxGPU(double a, double b) {
 	bool sel = (a <= b);
-	return (double)(sel * b - (1 - sel) * a);
+	return (double)(sel) * b + (double)(1 - sel) * a;
 }
 
 __global__ void binaryStep(double *x) {
@@ -32,12 +32,16 @@ void binaryStepGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns) {
 	cudaDeviceSynchronize();
 }
 
-// Need to work out the fractional exponent stuff for sigmoid
-/*
+// exp(x) returns e^x ; its a cuda library function
 __global__ void sigmoid(double *x) {
 	int idx = blockDim.x * blockIdx.x + threadIdx.x;
-	x[idx] = 1 / (1 + 2.71828)
-}*/
+	x[idx] = 1 / (1 + exp(x[idx]));
+}
+
+void sigmoidGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns) {
+	sigmoid<<<Dg, Dn, Ns>>>(x);
+	cudaDeviceSynchronize();
+}
 
 __global__ void relu(double *x) {
 	int idx = blockDim.x * blockIdx.x + threadIdx.x;

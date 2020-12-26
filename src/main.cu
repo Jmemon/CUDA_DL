@@ -1,27 +1,80 @@
 #include "../include/NeuralNet.h"
 #include "../include/Activation.cuh"
 #include <iostream>
+#include <stdlib.h>
 #include <vector>
 
-int main(int argc, char *argv[]) {
-	
-	std::vector<int> layers(3, 0);
-	layers[0] = 100;
-	layers[1] = 500;
-	layers[2] = 10;
+void randVect(std::vector<double> &x);
 
-	std::vector<Activation> funcs(3, relu);
-	funcs[0] = binary_step;
-	funcs[1] = relu;
-	funcs[2] = relu;
+double normVect(std::vector<double> &x);
+
+std::ostream& operator<< (std::ostream& cout, std::vector<double> &x);
+
+void operator/= (std::vector<double> &x, double c);
+
+int main(int argc, char *argv[]) {
+
+	std::vector<double> x(500);
+
+	randVect(x);
+
+	std::vector<int> layers(3);
+	layers[0] = 100;
+	layers[1] = 50;
+	layers[2] = 2;
+
+	std::vector<Activation> funcs(2);
+	funcs[0] = relu;
+	funcs[1] = sigmoid;
 
 	NeuralNet nn(layers, funcs);
 
-	nn.printWeights(0);
-	std::cout << std::endl;
+	nn.printNN();
 
-	nn.printWeights(1);
-	std::cout << std::endl;	
+	x /= normVect(x);
+
+	std::cout << x;
+
+	nn.forwardPass(x);
+
+	std::cout << x;
 
 	return 0;
 }
+
+void randVect(std::vector<double> &x)
+{
+	srand(time(NULL));
+
+	for (int i = 0; i < x.size(); i++)
+		x[i] = (double)(rand() % 1000000) / 1000.0;
+
+} // end randVect
+
+double normVect(std::vector<double> &x)
+{
+	double sqrSum = 0.0;
+
+	for (int i = 0; i < x.size(); i++)
+		sqrSum += x[i] * x[i];
+
+	return std::sqrt(sqrSum);
+
+} // end normVect
+
+std::ostream& operator<< (std::ostream& cout, std::vector<double> &x)
+{
+	for (int i = 0; i < x.size(); i++)
+		std::cout << x[i] << "  ";	
+
+	std::cout << std::endl;
+
+	return cout;
+} // end operator<<
+
+void operator/= (std::vector<double> &x, double c)
+{
+	for (int i = 0; i < x.size(); i++)
+		x[i] /= c;
+
+} // end operator/=

@@ -14,9 +14,9 @@ SRC_DIR=src
 INC_DIR=include
 OBJ_DIR=bin
 
-SRCS=$(SRC_DIR)/main.cu $(SRC_DIR)/NeuralNet.cu $(SRC_DIR)/Activation.cu
-DEPS=$(INC_DIR)/NeuralNet.h $(INC_DIR)/Activation.cuh
-OBJS=$(OBJ_DIR)/main.o $(OBJ_DIR)/NeuralNet.o $(OBJ_DIR)/Activation.o
+SRCS=$(SRC_DIR)/main.cu $(SRC_DIR)/NeuralNet.cu $(SRC_DIR)/Activation.cu $(SRC_DIR)/Matrix.cu
+DEPS=$(INC_DIR)/NeuralNet.h $(INC_DIR)/Activation.cuh $(INC_DIR)/Matrix.cuh
+OBJS=$(OBJ_DIR)/main.o $(OBJ_DIR)/NeuralNet.o $(OBJ_DIR)/Activation.o $(OBJ_DIR)/Matrix.o
 
 .PHONY: clean
 
