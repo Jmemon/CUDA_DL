@@ -2,21 +2,6 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
-__global__ void randInit(double *x) {
-
-	int idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-	curandState_t state;
-	curand_init(idx, 0, 0, &state);	// seed, seq num, offset, curandState_t ptr
-
-	x[idx] = (double)(curand(&state) % 10000) / 10000;
-}
-
-void randInitGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns) {
-	randInit<<<Dg, Dn, Ns>>>(x);
-	cudaDeviceSynchronize();
-}
-
 __device__ double maxGPU(double a, double b) {
 	bool sel = (a <= b);
 	return (double)(sel) * b + (double)(1 - sel) * a;

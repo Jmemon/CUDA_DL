@@ -1,8 +1,6 @@
 #ifndef ACTIVATION_CUH
 #define ACTIVATION_CUH
 
-void randInitGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns = 0);
-
 void binaryStepGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns = 0);
 
 void sigmoidGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns = 0);
