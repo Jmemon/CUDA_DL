@@ -15,8 +15,10 @@ void operator/= (std::vector<double> &x, double c);
 int main(int argc, char *argv[]) {
 
 	std::vector<double> x(500);
+	// batch_size = 5
 
 	randVect(x);
+	x /= normVect(x);
 
 	std::vector<int> layers(3);
 	layers[0] = 100;
@@ -30,11 +32,6 @@ int main(int argc, char *argv[]) {
 	NeuralNet nn(layers, funcs);
 
 	nn.printNN();
-
-	x /= normVect(x);
-
-	std::cout << x;
-
 	nn.forwardPass(x);
 
 	std::cout << x;
