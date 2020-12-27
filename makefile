@@ -14,19 +14,19 @@ SRC_DIR=src
 INC_DIR=include
 OBJ_DIR=bin
 
-SRCS=$(SRC_DIR)/main.cu $(SRC_DIR)/NeuralNet.cu $(SRC_DIR)/Activation.cu $(SRC_DIR)/Matrix.cu
-DEPS=$(INC_DIR)/NeuralNet.h $(INC_DIR)/Activation.cuh $(INC_DIR)/Matrix.cuh
-OBJS=$(OBJ_DIR)/main.o $(OBJ_DIR)/NeuralNet.o $(OBJ_DIR)/Activation.o $(OBJ_DIR)/Matrix.o
+SRCS=$(SRC_DIR)/main.cu $(SRC_DIR)/NeuralNet.cu $(SRC_DIR)/Activation.cu $(SRC_DIR)/Matrix.cu $(SRC_DIR)/Loss.cu
+DEPS=$(INC_DIR)/NeuralNet.h $(INC_DIR)/Activation.cuh $(INC_DIR)/Matrix.cuh $(INC_DIR)/Loss.cuh
+OBJS=$(OBJ_DIR)/main.o $(OBJ_DIR)/NeuralNet.o $(OBJ_DIR)/Activation.o $(OBJ_DIR)/Matrix.o $(OBJ_DIR)/Loss.o 
 
 .PHONY: clean
 
 # Link .o files to get target executable
 main: $(OBJS)
-	$(NVCC) $^ -o $@ $(CUDA_LIB_DIR) $(CUDA_INC_DIR) $(CUDA_LINK_LIBS)
+	$(NVCC) -arch=sm_60 $^ -o $@ $(CUDA_LIB_DIR) $(CUDA_INC_DIR) $(CUDA_LINK_LIBS)
 
 # Compile .cpp and .cu files into .o files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cu 
-	$(NVCC) -c $^ -o $@
+	$(NVCC) -arch=sm_60 -dc $^ -o $@
 
 clean: 
 	@rm main $(OBJS)

@@ -1,6 +1,8 @@
 #ifndef LOSS_CUH
 #define LOSS_CUH
 
+#include <vector>
+
 typedef enum lossType 
 {
 	mse,
@@ -16,8 +18,12 @@ x is where the networks output should go
 y is where the actual output should go
 size is the length of y (if x is mxn, size = m)
 ----------------------------------------------- */
-void mseGPU(double *err, int e_size, double *x, double *y, int size, dim3 Dg, dim3 Dn, size_t Ns = 0);
 
-void crossEntropyGPU(double *err, int e_size, double *x, double *y, int size, dim3 Dg, dim3 Dn, size_t Ns = 0);
+// should be use for regression stuff
+// sums (yhat_i - y_i)^2 where i will go through the output nodes
+std::vector<double> mseGPU(double *x, double *y, int size, int e_size); 
+
+// should be used for classification
+std::vector<double> crossEntropyGPU(double *x, double *y, int size, int e_size);
 
 #endif // LOSS_CUH
