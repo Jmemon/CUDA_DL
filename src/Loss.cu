@@ -1,6 +1,7 @@
 #include "../include/Loss.cuh"
 #include <stdlib.h>
 #include <vector>
+#include <iostream>
 
 // block size will always be 512 in this file
 
@@ -8,8 +9,7 @@ __global__ void reduce(double out, double *in, int len)
 {
 	extern __shared__ double values[];
 
-	double *tmp;		// number of blocks	
-	tmp = (double *)std::malloc(gridDim.x * gridDim.y * sizeof(double));
+	double *tmp = new double[gridDim.x * gridDim.y];
 
 	int idx = blockDim.x * threadIdx.y + threadIdx.x;
 
@@ -93,9 +93,11 @@ std::vector<double> mseGPU(double *x, double *y, int size, int e_size)
 	
 	for (int i = 0; i < e_size; i++)
 	{
+		std::cout << "HERE" << i << std::endl;
 		tmp = d_sqr + i * size; // it will move through each samples in sqr
 		reduce<<<redGRID, redBLOCK, size / redGRID.x * sizeof(double)>>>(d_err[i], tmp, size);
 		cudaDeviceSynchronize();
+		std::cout << "HERE" << std::endl;
 	} // end for
 
 	cudaMemcpy(err.data(), d_err, e_size * sizeof(double), cudaMemcpyDeviceToHost);

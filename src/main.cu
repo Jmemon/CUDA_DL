@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <vector>
 
+#include "../include/Loss.cuh"
+
 void randVect(std::vector<double> &x);
 
 double normVect(std::vector<double> &x);
@@ -17,6 +19,10 @@ int main(int argc, char *argv[]) {
 	std::vector<double> x(500);
 	// batch_size = 5
 
+	std::vector<double> y(10, 1);
+
+	std::vector<double> err(5);
+
 	randVect(x);
 	x /= normVect(x);
 
@@ -26,15 +32,19 @@ int main(int argc, char *argv[]) {
 	layers[2] = 2;
 
 	std::vector<Activation> funcs(2);
-	funcs[0] = relu;
-	funcs[1] = sigmoid;
+	funcs[0] = sigmoid;
+	funcs[1] = leaky_relu;
 
 	NeuralNet nn(layers, funcs);
 
 	nn.printNN();
 	nn.forwardPass(x);
 
-	std::cout << x;
+	err = mseGPU(x.data(), y.data(), 2, 5);
+
+	std::cout << "x: " << x;
+	std::cout << "y: " << y;
+	std::cout << "err: " << err;
 
 	return 0;
 }
