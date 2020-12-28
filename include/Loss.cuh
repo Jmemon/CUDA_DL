@@ -14,10 +14,12 @@ size is the length of y (if x is mxn, size = m)
 ----------------------------------------------- */
 
 // should be use for regression stuff
-// sums (yhat_i - y_i)^2 where i will go through the output nodes
-std::vector<double> mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int e_size); 
+// (1/2n)sum[norm(yhat_i - y_i)^2] 
+// where i will go through each prediction-actual pair
+// n is the batch size
+double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size); 
 
 // should be used for classification
-std::vector<double> crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int e_size);
+double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size);
 
 #endif // LOSS_CUH

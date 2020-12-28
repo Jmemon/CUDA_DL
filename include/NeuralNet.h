@@ -44,10 +44,11 @@ class NeuralNet {
 		// We use layers[0] to determine the batchsize
 		// doesn't return anything, but results in x being transformed to NN output
 
-		std::vector<double> calcLoss(std::vector<double> &x, std::vector<double> &y);
+		double calcLoss(std::vector<double> &x, std::vector<double> &y);
 		// x can be matrix in row-major form
 		// use layer[layers.size() - 1] to detetmine output size
-		// returns vector of errors for each guess
+		// returns double which is average of error for each sample in batch
+		// 	SO BE CAREFUL ABOUT ONLY PUTTING ONE BATCH IN AT A TIME
 	
 		void printNN() const;
 		// prints info about the neural net

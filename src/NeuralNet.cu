@@ -134,7 +134,7 @@ void NeuralNet::forwardPass(std::vector<double> &x)
 
 } // end forwardPass
 
-std::vector<double> NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
+double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
 {
 	// -- Error Check --------------------------------------------------------
 	double tmp1 = (double)(x.size()) / (double)(layers[layers.size() - 1]);
@@ -169,7 +169,7 @@ std::vector<double> NeuralNet::calcLoss(std::vector<double>& x, std::vector<doub
 	} // end if
 	// ----------------------------------------------------------------------
 
-	std::vector<double> err(x.size() / layers[layers.size() - 1]);
+	double err;
 
 	switch (errFunc)
 	{
@@ -214,6 +214,20 @@ void NeuralNet::printNN() const
 		} // end switch
 
 	} // end for
+
+	std::cout << std::endl;
+
+	switch(errFunc)
+	{
+		case mse:
+			std::cout << "Loss Function: Mean-Squared Error" << std::endl;
+			break;
+		case logLoss:
+			std::cout << "Loss Function: Cross Entropy" << std::endl;
+			break;
+		default:
+			throw std::domain_error("This loss function is not implemented");
+	} // end switch
 
 	std::cout << std::endl;
 

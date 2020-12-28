@@ -15,7 +15,7 @@ void operator/= (std::vector<double> &x, double c);
 
 int main(int argc, char *argv[]) {
 
-	std::vector<double> err(5);
+	double err;
 
 	std::vector<double> x(500);
 	// batch_size = 5
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 	funcs[0] = sigmoid;
 	funcs[1] = leaky_relu;
 
-	Loss lFunc = mse;
+	Loss lFunc = logLoss;
 
 	NeuralNet nn(layers, funcs, lFunc);
 
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 
 	std::cout << "x: " << x;
 	std::cout << "y: " << y;
-	std::cout << "err: " << err;
+	std::cout << "err: " << err << std::endl;
 
 	return 0;
 }

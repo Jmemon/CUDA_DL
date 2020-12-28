@@ -17,24 +17,23 @@ struct mse_functor
 
 }; // end mse_functor
 
-std::vector<double> mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int e_size)
+// sums the mses of each prediction in a batch, then divide them by 2*batch_size
+double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size)
 {
-	int offset;
-	std::vector<double> err(e_size);
+	double mse = 0.0;
 	thrust::device_vector<double> d_x(x);
 	thrust::device_vector<double> d_y(y);
 
 	// y[i] <- (x[i] - y[i]) * (x[i] - y[i])
 	thrust::transform(d_x.begin(), d_x.end(), d_y.begin(), d_y.begin(), mse_functor());
 	
-	for (int i = 0; i < e_size; i++)
-	{
-		offset = i * size;
-		err[i] = thrust::reduce(d_y.begin() + offset, d_y.begin() + offset + size, (double) 0.0, thrust::plus<double>());
-		err[i] /= (2 * size);
-	} // end for
+	// set mse to be the sum of squares of each element of every sample of d_y
+	mse = thrust::reduce(d_y.begin(), d_y.end(), (double) 0.0, thrust::plus<double>());
 
-	return err;
+	// take batch mse average
+	mse /= (2 * batch_size);
+
+	return mse;
 } // end mseGPU
 
 struct logLoss_functor
@@ -49,23 +48,22 @@ struct logLoss_functor
 
 }; // end ln_functor
 
-std::vector<double> crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int e_size)
+double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size)
 {
-	int offset;
-	std::vector<double> err(e_size);
+	double logLoss = 0.0;
 	thrust::device_vector<double> d_x(x);
 	thrust::device_vector<double> d_y(y);
 
 	// y[i] <- y[i] * log_e(x[i])
 	thrust::transform(d_x.begin(), d_x.end(), d_y.begin(), d_y.begin(), logLoss_functor());
 
-	for (int i = 0; i < e_size; i++)
-	{
-		offset = i * size;
-		err[i] = thrust::reduce(d_y.begin() + offset, d_y.begin() + offset + size, (double) 0.0, thrust::plus<double>());
-	} // end for
+	// logLoss <- sum{y[i] * log_e(x[i])}
+	logLoss = thrust::reduce(d_y.begin(), d_y.end(), (double) 0.0, thrust::plus<double>());
 
-	return err;
+	// logLoss <- (1/batch_size) * logLoss
+	logLoss /= batch_size;
+
+	return logLoss;
 } // end crossEntropyGPU
 
 /*
