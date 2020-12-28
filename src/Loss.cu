@@ -31,6 +31,7 @@ std::vector<double> mseGPU(std::vector<double> &x, std::vector<double> &y, int s
 	{
 		offset = i * size;
 		err[i] = thrust::reduce(d_y.begin() + offset, d_y.begin() + offset + size, (double) 0.0, thrust::plus<double>());
+		err[i] /= (2 * size);
 	} // end for
 
 	return err;
