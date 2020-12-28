@@ -1,13 +1,14 @@
 #include "../include/NeuralNet.h"
 #include "../include/Activation.cuh"
 #include "../include/Matrix.cuh"
+#include "../include/Loss.cuh"
 #include <iostream>
 #include <stdio.h>
 #include <exception>
 #include <vector>
 
-NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f) 
-	: layers(l), funcs(f)
+NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e) 
+	: layers(l), funcs(f), errFunc(e)
 {
 	if (l.size() < 2)
 		throw std::length_error("Network must at least have input and output layer");
@@ -132,6 +133,58 @@ void NeuralNet::forwardPass(std::vector<double> &x)
 	} // end for
 
 } // end forwardPass
+
+std::vector<double> NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
+{
+	// -- Error Check --------------------------------------------------------
+	double tmp1 = (double)(x.size()) / (double)(layers[layers.size() - 1]);
+	double tmp2 = (double)(y.size()) / (double)(layers[layers.size() - 1]);
+
+	if (tmp1 < 1.0) 
+	{
+		char msg [100];
+		std::sprintf(msg, "User Output Size: %lud ; NN Output Size: %d", x.size(), layers[layers.size() - 1]);
+		throw std::length_error(msg);
+	} // end if
+	
+	if (tmp2 < 1.0) 
+	{
+		char msg [100];
+		std::sprintf(msg, "User Output Size: %lud ; NN Output Size: %d", y.size(), layers[layers.size() - 1]);
+		throw std::length_error(msg);
+	} // end if
+
+	if (std::floor(tmp1) != tmp1)
+	{
+		char msg [100];
+		std::sprintf(msg, "Too many/few Input Args (out_size / nn_out_size = %f)", tmp1);
+		throw std::length_error(msg);
+	} // end if
+
+	if (std::floor(tmp2) != tmp2)
+	{
+		char msg [100];
+		std::sprintf(msg, "Too many/few Input Args (out_size / nn_out_size = %f)", tmp2);
+		throw std::length_error(msg);
+	} // end if
+	// ----------------------------------------------------------------------
+
+	std::vector<double> err(x.size() / layers[layers.size() - 1]);
+
+	switch (errFunc)
+	{
+		case mse:
+			err = mseGPU(x, y, layers[layers.size() - 1], x.size() / layers[layers.size() - 1]);
+			break;
+		case logLoss:
+			err = crossEntropyGPU(x, y, layers[layers.size() - 1], x.size() / layers[layers.size() - 1]);
+			break;
+		default:
+			throw std::domain_error("This loss function has not been implemented");
+	} // end switch
+
+	return err;
+} // end error
 
 void NeuralNet::printNN() const
 {

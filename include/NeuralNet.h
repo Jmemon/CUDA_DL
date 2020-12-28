@@ -2,6 +2,7 @@
 #define NEURALNET_H
 
 #include "Activation.cuh"
+#include "Loss.cuh"
 #include <vector>
 
 typedef enum Activation {
@@ -11,6 +12,11 @@ typedef enum Activation {
 	relu,
 	leaky_relu
 } Activation;
+
+typedef enum Loss {
+	mse,
+	logLoss
+} Loss;
 
 class NeuralNet {
 	private:
@@ -23,8 +29,10 @@ class NeuralNet {
 		const std::vector<Activation> funcs; 
 		// vector containing activation func to apply to (W_i)x_i at position i
 
+		const Loss errFunc;
+
 	public:
-		NeuralNet(std::vector<int> &l, std::vector<Activation> &f); 
+		NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e); 
 		// contructor which initializes data members
 		// takes vectors of layer sizes and activation functions as input
 
@@ -35,6 +43,11 @@ class NeuralNet {
 		// x can be a matrix in row-major form
 		// We use layers[0] to determine the batchsize
 		// doesn't return anything, but results in x being transformed to NN output
+
+		std::vector<double> calcLoss(std::vector<double> &x, std::vector<double> &y);
+		// x can be matrix in row-major form
+		// use layer[layers.size() - 1] to detetmine output size
+		// returns vector of errors for each guess
 	
 		void printNN() const;
 		// prints info about the neural net

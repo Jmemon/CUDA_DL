@@ -17,7 +17,7 @@ struct mse_functor
 
 }; // end mse_functor
 
-std::vector<double> mseGPU(std::vector<double> x, std::vector<double> y, int size, int e_size)
+std::vector<double> mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int e_size)
 {
 	int offset;
 	std::vector<double> err(e_size);
@@ -48,7 +48,7 @@ struct logLoss_functor
 
 }; // end ln_functor
 
-std::vector<double> crossEntropyGPU(std::vector<double> x, std::vector<double> y, int size, int e_size)
+std::vector<double> crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int e_size)
 {
 	int offset;
 	std::vector<double> err(e_size);

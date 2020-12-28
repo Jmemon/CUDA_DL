@@ -1,10 +1,9 @@
 #include "../include/NeuralNet.h"
 #include "../include/Activation.cuh"
+#include "../include/Loss.cuh"
 #include <iostream>
 #include <stdlib.h>
 #include <vector>
-
-#include "../include/Loss.cuh"
 
 void randVect(std::vector<double> &x);
 
@@ -16,12 +15,12 @@ void operator/= (std::vector<double> &x, double c);
 
 int main(int argc, char *argv[]) {
 
+	std::vector<double> err(5);
+
 	std::vector<double> x(500);
 	// batch_size = 5
 
 	std::vector<double> y(10, 1);
-
-	std::vector<double> err(5);
 
 	randVect(x);
 	x /= normVect(x);
@@ -35,12 +34,13 @@ int main(int argc, char *argv[]) {
 	funcs[0] = sigmoid;
 	funcs[1] = leaky_relu;
 
-	NeuralNet nn(layers, funcs);
+	Loss lFunc = mse;
+
+	NeuralNet nn(layers, funcs, lFunc);
 
 	nn.printNN();
 	nn.forwardPass(x);
-
-	err = crossEntropyGPU(x, y, 2, 5);
+	err = nn.calcLoss(x, y);
 
 	std::cout << "x: " << x;
 	std::cout << "y: " << y;
