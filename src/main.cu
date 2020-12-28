@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	nn.printNN();
 	nn.forwardPass(x);
 
-	err = mseGPU(x.data(), y.data(), 2, 5);
+	err = crossEntropyGPU(x, y, 2, 5);
 
 	std::cout << "x: " << x;
 	std::cout << "y: " << y;

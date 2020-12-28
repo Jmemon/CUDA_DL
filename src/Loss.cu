@@ -1,8 +1,73 @@
 #include "../include/Loss.cuh"
-#include <stdlib.h>
 #include <vector>
+#include <thrust/transform.h>
+#include <thrust/device_vector.h>
 #include <iostream>
+#include <stdlib.h>
 
+struct mse_functor
+{
+
+	mse_functor() {}
+
+	__host__ __device__ double operator() (const double &x, const double &y) const
+	{
+		return (x - y) * (x - y);
+	} // end operator
+
+}; // end mse_functor
+
+std::vector<double> mseGPU(std::vector<double> x, std::vector<double> y, int size, int e_size)
+{
+	int offset;
+	std::vector<double> err(e_size);
+	thrust::device_vector<double> d_x(x);
+	thrust::device_vector<double> d_y(y);
+
+	// y[i] <- (x[i] - y[i]) * (x[i] - y[i])
+	thrust::transform(d_x.begin(), d_x.end(), d_y.begin(), d_y.begin(), mse_functor());
+	
+	for (int i = 0; i < e_size; i++)
+	{
+		offset = i * size;
+		err[i] = thrust::reduce(d_y.begin() + offset, d_y.begin() + offset + size, (double) 0.0, thrust::plus<double>());
+	} // end for
+
+	return err;
+} // end mseGPU
+
+struct logLoss_functor
+{
+	
+	logLoss_functor() {}
+
+	__host__ __device__ double operator() (const double &x, const double &y) const 
+	{
+		return -y *log(x);
+	}
+
+}; // end ln_functor
+
+std::vector<double> crossEntropyGPU(std::vector<double> x, std::vector<double> y, int size, int e_size)
+{
+	int offset;
+	std::vector<double> err(e_size);
+	thrust::device_vector<double> d_x(x);
+	thrust::device_vector<double> d_y(y);
+
+	// y[i] <- y[i] * log_e(x[i])
+	thrust::transform(d_x.begin(), d_x.end(), d_y.begin(), d_y.begin(), logLoss_functor());
+
+	for (int i = 0; i < e_size; i++)
+	{
+		offset = i * size;
+		err[i] = thrust::reduce(d_y.begin() + offset, d_y.begin() + offset + size, (double) 0.0, thrust::plus<double>());
+	} // end for
+
+	return err;
+} // end crossEntropyGPU
+
+/*
 // block size will always be 512 in this file
 
 __global__ void reduce(double out, double *in, int len)
@@ -74,6 +139,7 @@ std::vector<double> mseGPU(double *x, double *y, int size, int e_size)
 	double *tmp;
 	double *d_err, *d_sqr, *d_x, *d_y;
 	std::vector<double> err(e_size);
+	thrust::device_vector<double> sqr(size * e_size);
 
 	cudaMalloc((void **) &d_err, e_size * sizeof(double));
 	cudaMalloc((void **) &d_sqr, size * e_size * sizeof(double));
@@ -86,18 +152,16 @@ std::vector<double> mseGPU(double *x, double *y, int size, int e_size)
 	dim3 sqrGRID(size * e_size / 512 + 1);
 	dim3 sqrBLOCK(512);
 
-	dim3 redGRID(size / 512 + 1);
-	dim3 redBLOCK(512);
+	//dim3 redGRID(size / 512 + 1);
+	//dim3 redBLOCK(512);
 
 	squares<<<sqrGRID, sqrBLOCK, 0>>>(d_sqr, d_x, d_y, size * e_size);
 	
 	for (int i = 0; i < e_size; i++)
 	{
-		std::cout << "HERE" << i << std::endl;
 		tmp = d_sqr + i * size; // it will move through each samples in sqr
 		reduce<<<redGRID, redBLOCK, size / redGRID.x * sizeof(double)>>>(d_err[i], tmp, size);
 		cudaDeviceSynchronize();
-		std::cout << "HERE" << std::endl;
 	} // end for
 
 	cudaMemcpy(err.data(), d_err, e_size * sizeof(double), cudaMemcpyDeviceToHost);
@@ -166,4 +230,4 @@ std::vector<double> crossEntropyGPU(double *x, double *y, int size, int e_size)
 
 	return err;
 }
-
+*/

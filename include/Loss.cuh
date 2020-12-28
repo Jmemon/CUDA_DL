@@ -21,9 +21,9 @@ size is the length of y (if x is mxn, size = m)
 
 // should be use for regression stuff
 // sums (yhat_i - y_i)^2 where i will go through the output nodes
-std::vector<double> mseGPU(double *x, double *y, int size, int e_size); 
+std::vector<double> mseGPU(std::vector<double> x, std::vector<double> y, int size, int e_size); 
 
 // should be used for classification
-std::vector<double> crossEntropyGPU(double *x, double *y, int size, int e_size);
+std::vector<double> crossEntropyGPU(std::vector<double> x, std::vector<double> y, int size, int e_size);
 
 #endif // LOSS_CUH
