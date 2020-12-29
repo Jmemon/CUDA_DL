@@ -1,12 +1,16 @@
 #ifndef ACTIVATION_CUH
 #define ACTIVATION_CUH
 
-void binaryStepGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns = 0);
+#include <vector>
 
-void sigmoidGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns = 0);
+// All of these functions expect a one dimensional row of threads
 
-void reluGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns = 0);
+std::vector<double> binaryStepGPU(std::vector<double>& z);
 
-void leakyReluGPU(double *x, dim3 Dg, dim3 Dn, size_t Ns = 0);
+std::vector<double> sigmoidGPU(std::vector<double>& z);
+
+std::vector<double> reluGPU(std::vector<double>& z);
+
+std::vector<double> leakyReluGPU(std::vector<double>& z);
 
 #endif // ACTIVATION_CUH

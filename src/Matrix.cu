@@ -1,4 +1,6 @@
 #include "../include/Matrix.cuh"
+#include <vector>
+#include <algorithm> // std::max
 
 // https://github.com/lzhengchun/matrix-cuda/blob/master/matrix_cuda.cu 
 /*
@@ -21,7 +23,10 @@ __global__ void matMul(double *a, double *b, double *c, int m, int n, int k)
 	int col = blockIdx.x * blockDim.x + threadIdx.x;
 	double sum = 0.0;
    
-	if( col < k && row < m) 
+	if (row >= m || col >= k)
+		return;
+
+	if(col < k && row < m) 
 	{
 		for(int i = 0; i < n; i++) 
 			sum += a[row * n + i] * b[i * k + col];
@@ -31,30 +36,111 @@ __global__ void matMul(double *a, double *b, double *c, int m, int n, int k)
 
 } // end matMul
 
-void matMulGPU(double *a, double *b, double *c, int m, int n, int k, dim3 Dg, dim3 Dn, size_t Ns)
+std::vector<double> matMulGPU(std::vector<double>& a, std::vector<double>& b, int m, int n, int k)
 {
 	double *d_a, *d_b, *d_c;
-	
+	std::vector<double> c(m * k);
+	int BLOCKSIZE = m >= 32 || k >= 32 ? 32 : std::max(m, k);	
+
 	cudaMalloc((void **) &d_a, m * n * sizeof(double));
 	cudaMalloc((void **) &d_b, n * k * sizeof(double));
 	cudaMalloc((void **) &d_c, m * k * sizeof(double));
 
-	cudaMemcpy(d_a, a, m * n * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_b, b, n * k * sizeof(double), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_c, c, m * k * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_a, a.data(), m * n * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_b, b.data(), n * k * sizeof(double), cudaMemcpyHostToDevice);
 	
-	matMul<<<Dg, Dn, Ns>>>(d_a, d_b, d_c, m, n, k);
+	dim3 GRID((k + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
+
+	matMul<<<GRID, BLOCK, 0>>>(d_a, d_b, d_c, m, n, k);
 	cudaDeviceSynchronize();
 
-	cudaMemcpy(a, d_a, m * n * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(b, d_b, n * k * sizeof(double), cudaMemcpyDeviceToHost);
-	cudaMemcpy(c, d_c, m * k * sizeof(double), cudaMemcpyDeviceToHost);
+	cudaMemcpy(c.data(), d_c, m * k * sizeof(double), cudaMemcpyDeviceToHost);
 
 	cudaFree(d_a);
 	cudaFree(d_b);
 	cudaFree(d_c);
 	
+	return c;
 } // end matMulGPU
+
+__global__ void hadamard(double *a, double *b, double *c, int len)
+{
+	int g_idx = gridDim.x * blockDim.x * (blockIdx.y * blockDim.y + threadIdx.y)
+		+ blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (g_idx >= len)
+		return;
+
+	c[g_idx] = a[g_idx] + b[g_idx];
+} // end haramard
+
+std::vector<double> hadamardGPU(std::vector<double>& a, std::vector<double>& b, int m, int n)
+{
+	double *d_a, *d_b, *d_c;
+	std::vector<double> c(m * n);	
+	int BLOCKSIZE = m >= 32 || n >= 32 ? 32 : std::max(m, n);
+
+	cudaMalloc((void **) &d_a, m * n * sizeof(double));
+	cudaMalloc((void **) &d_b, m * n * sizeof(double));
+	cudaMalloc((void **) &d_c, m * n * sizeof(double));
+
+	cudaMemcpy(d_a, a.data(), m * n * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_b, b.data(), m * n * sizeof(double), cudaMemcpyHostToDevice);
+	
+	dim3 GRID((n + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
+
+	hadamard<<<GRID, BLOCK, 0>>>(d_a, d_b, d_c, m * n);
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(c.data(), d_c, m * n * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(d_a);
+	cudaFree(d_b);
+	cudaFree(d_c);
+
+	return c;
+} // end hadamardGPU
+
+__global__ void matAdd(double *a, double *b, double *c, int len)
+{
+	int g_idx = gridDim.x * blockDim.x * (blockIdx.y * blockDim.y + threadIdx.y)
+		+ blockIdx.x * blockDim.x + threadIdx.x;
+	
+	if (g_idx >= len)
+		return;
+
+	c[g_idx] = a[g_idx] + b[g_idx];
+} // end matAdd
+
+std::vector<double> matAddGPU(std::vector<double>& a, std::vector<double>& b, int m, int n)
+{
+	double *d_a, *d_b, *d_c;
+	std::vector<double> c(m * n);	
+	int BLOCKSIZE = m >= 32 || n >= 32 ? 32 : std::max(m, n);
+
+	cudaMalloc((void **) &d_a, m * n * sizeof(double));
+	cudaMalloc((void **) &d_b, m * n * sizeof(double));
+	cudaMalloc((void **) &d_c, m * n * sizeof(double));
+
+	cudaMemcpy(d_a, a.data(), m * n * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_b, b.data(), m * n * sizeof(double), cudaMemcpyHostToDevice);
+	
+	dim3 GRID((n + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
+
+	matAdd<<<GRID, BLOCK, 0>>>(d_a, d_b, d_c, m * n);
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(c.data(), d_c, m * n * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(d_a);
+	cudaFree(d_b);
+	cudaFree(d_c);
+	
+	return c;
+} // end matAddGPU
 
 // https://github.com/lzhengchun/matrix-cuda/blob/master/matrix_cuda.cu 
 /*
@@ -82,25 +168,29 @@ __global__ void matTrans(double *mat_in, double *mat_out, unsigned int rows, uns
 
 } // end matTrans
 
-void matTransGPU(double *mat_in, double *mat_out, unsigned int rows, unsigned int cols, dim3 Dg, dim3 Dn, size_t Ns)
+std::vector<double> matTransGPU(std::vector<double>& a, int m, int n)
 {
-	double *d_in, *d_out;
+	double *d_a, *d_aT;
+	std::vector<double> aT(m * n);
+	int BLOCKSIZE = m >= 32 || n >= 32 ? 32 : std::max(m, n);
 
-	size_t SIZE = rows * cols * sizeof(double);
+	size_t SIZE = m * n * sizeof(double);
 
-	cudaMalloc((void **) &d_in, SIZE); 
-	cudaMalloc((void **) &d_out, SIZE);
+	cudaMalloc((void **) &d_a, SIZE); 
+	cudaMalloc((void **) &d_aT, SIZE);
 
-	cudaMemcpy(d_in, mat_in, SIZE, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_out, mat_out, SIZE, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_a, a.data(), SIZE, cudaMemcpyHostToDevice);
 
-	matTrans<<<Dg, Dn, Ns>>>(mat_in, mat_out, rows, cols);
+	dim3 GRID((n + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
+
+	matTrans<<<GRID, BLOCK, 0>>>(d_a, d_aT, m, n);
 	cudaDeviceSynchronize();
 
-	cudaMemcpy(mat_in, d_in, SIZE, cudaMemcpyDeviceToHost);
-	cudaMemcpy(mat_out, d_out, SIZE, cudaMemcpyDeviceToHost);
+	cudaMemcpy(aT.data(), d_aT, SIZE, cudaMemcpyDeviceToHost);
 
-	cudaFree(d_in);
-	cudaFree(d_out);
+	cudaFree(d_a);
+	cudaFree(d_aT);
 
+	return aT;
 } // end matTransGPU

@@ -29,69 +29,35 @@ NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e)
 
 } // end NeuralNet
 
-void NeuralNet::activation(std::vector<double> &x, Activation f) 
+std::vector<double> NeuralNet::activation(std::vector<double> &x, Activation f) 
 {
 	if (x.size() < 1)
 		throw std::length_error("Layer must have at least one node");
 
-	size_t SIZE = x.size() * sizeof(double);
-
-	float ms;
-	double *d_x;
-	cudaMalloc((void **) &d_x, SIZE);
-
-	cudaMemcpy(d_x, x.data(), SIZE, cudaMemcpyHostToDevice);
-	
-	dim3 GRID((x.size() - 1) / 1024 + 1);
-	dim3 BLOCK(1024);
-	
-	cudaEvent_t start, stop;
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
+	std::vector<double> a(x.size());
 
 	switch(f)
 	{
 		case binary_step:
-			cudaEventRecord(start);
-			binaryStepGPU(d_x, GRID, BLOCK);	
-			cudaEventRecord(stop);
+			a = binaryStepGPU(x);
 			break;
 		case sigmoid:
-			cudaEventRecord(start);
-			sigmoidGPU(d_x, GRID, BLOCK);	
-			cudaEventRecord(stop);
+			a = sigmoidGPU(x);
 			break;
 		case relu:
-			cudaEventRecord(start);
-			reluGPU(d_x, GRID, BLOCK);	
-			cudaEventRecord(stop);
+			a = reluGPU(x);
 			break;
 		case leaky_relu:
-			cudaEventRecord(start);
-			leakyReluGPU(d_x, GRID, BLOCK);	
-			cudaEventRecord(stop);
+			a = leakyReluGPU(x);
 			break;
 		default:
 			throw std::domain_error("This activation functions is not implemented.");
 	} // end switch
 
-	// cudaEventSynchronize(stop);
-	// waits until everything that began during stop's duration has completed
-	// not needed bc each of these gpu funcs use cudaDeviceSynchronize() after kernel call instead
-
-	cudaMemcpy(x.data(), d_x, SIZE, cudaMemcpyDeviceToHost);
-	
-	cudaEventElapsedTime(&ms, start, stop);
-	
-	std::cout << "Activation Time: " << ms << std::endl;
-
-	cudaEventDestroy(start);
-	cudaEventDestroy(stop);
-	cudaFree(d_x);
-
+	return a;
 } // end activation
 
-void NeuralNet::forwardPass(std::vector<double> &x)
+std::vector<double> NeuralNet::forwardPass(std::vector<double> &x)
 {
 	// -- Error Check --------------------------------------------------------
 	double tmp = (double)(x.size()) / (double)(layers[0]);
@@ -113,25 +79,29 @@ void NeuralNet::forwardPass(std::vector<double> &x)
 
 	int batch_size = x.size() / layers[0];  // num cols in x
 	int input_size = layers[0];				// num rows in x
-	int BLOCK_SIZE = 32;
-	
-	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
-	
+	std::vector<double> out; 	
+	std::vector<double> tmpv(x);
+
 	for (int i = 0; i < layers.size() - 1; i++)
 	{
-		dim3 grid((batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE, (layers[i + 1] + BLOCK_SIZE - 1) / BLOCK_SIZE);
-
-		matMulGPU(weights[i].data(), x.data(), x.data(), layers[i + 1], layers[i], batch_size, grid, block);
+		tmpv = matMulGPU(weights[i], tmpv, layers[i + 1], layers[i], batch_size);
+		// tmpv = z_(i + 1)
 		// weights[i] is layers[i + 1] x layers[i]
 		// x is layers[i] x batch_size
 		// tmp is layers[i + 1] x batch_size
 
-		x.resize(layers[i + 1] * batch_size);
+		for (int j = 0; j < tmpv.size(); j++)
+			out.push_back(tmpv[j]);
 
-		activation(x, funcs[i]);	
+		tmpv = activation(tmpv, funcs[i]);	
+		// tmpv = a_(i + 1)
 
 	} // end for
 
+	for (int i = 0; i < tmpv.size(); i++)
+		out.push_back(tmpv[i]);
+
+	return out;
 } // end forwardPass
 
 double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
@@ -185,6 +155,8 @@ double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
 
 	return err;
 } // end error
+
+
 
 void NeuralNet::printNN() const
 {

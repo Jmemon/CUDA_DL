@@ -1,8 +1,14 @@
 #ifndef MATRIX_CUH
 #define MATRIX_CUH
 
-void matMulGPU(double *a, double *b, double *c, int m, int n, int k, dim3 Dg, dim3 Dn, size_t Ns = 0);
+#include <vector>
 
-void matTransGPU(double *mat_in, double *mat_out, int rows, int cols, dim3 Dg, dim3 Dn, size_t Ns = 0);
+std::vector<double> matMulGPU(std::vector<double>& a, std::vector<double>& b, int m, int n, int k);
+
+std::vector<double> hadamardGPU(std::vector<double>& a, std::vector<double>& b, int m, int n);
+
+std::vector<double> matAddGPU(std::vector<double>& a, std::vector<double>& b, int m, int n);
+
+std::vector<double> matTransGPU(std::vector<double>& a, int m, int n);
 
 #endif // MATRIX_CUH

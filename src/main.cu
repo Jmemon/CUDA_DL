@@ -22,6 +22,8 @@ int main(int argc, char *argv[]) {
 
 	std::vector<double> y(10, 1);
 
+	std::vector<double> FP;
+
 	randVect(x);
 	x /= normVect(x);
 
@@ -39,11 +41,12 @@ int main(int argc, char *argv[]) {
 	NeuralNet nn(layers, funcs, lFunc);
 
 	nn.printNN();
-	nn.forwardPass(x);
-	err = nn.calcLoss(x, y);
+	FP = nn.forwardPass(x);
+	std::vector<double> tmp(FP.begin() + 52 * 5, FP.end());
+	err = nn.calcLoss(tmp, y);
 
-	std::cout << "x: " << x;
-	std::cout << "y: " << y;
+	std::cout << "pred: " << tmp;
+	std::cout << "actl: " << y;
 	std::cout << "err: " << err << std::endl;
 
 	return 0;

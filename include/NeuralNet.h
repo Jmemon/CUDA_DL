@@ -30,20 +30,24 @@ class NeuralNet {
 		// vector containing activation func to apply to (W_i)x_i at position i
 
 		const Loss errFunc;
+		// stores the error func to use 
 
 	public:
 		NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e); 
 		// contructor which initializes data members
 		// takes vectors of layer sizes and activation functions as input
 
-		void activation(std::vector<double> &x, Activation f);
+		std::vector<double> activation(std::vector<double> &x, Activation f);
 		// applies activation function to x
+		// returns output in vector
 	
-		void forwardPass(std::vector<double> &x);
+		std::vector<double> forwardPass(std::vector<double> &x);
 		// x can be a matrix in row-major form
 		// We use layers[0] to determine the batchsize
-		// doesn't return anything, but results in x being transformed to NN output
-
+		// returns vector<double>
+		// 	this vector contains the z's for each layer and aL (output)
+		// 	use the layers vector to determine where each starts and ends
+	
 		double calcLoss(std::vector<double> &x, std::vector<double> &y);
 		// x can be matrix in row-major form
 		// use layer[layers.size() - 1] to detetmine output size
