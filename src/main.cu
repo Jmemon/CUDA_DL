@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 	funcs[0] = sigmoid;
 	funcs[1] = leaky_relu;
 
-	Loss lFunc = logLoss;
+	Loss lFunc = mse;
 
 	NeuralNet nn(layers, funcs, lFunc);
 
@@ -48,6 +48,15 @@ int main(int argc, char *argv[]) {
 	std::cout << "pred: " << tmp;
 	std::cout << "actl: " << y;
 	std::cout << "err: " << err << std::endl;
+
+	std::vector<double> tmp2;
+	std::vector<double> tmp1;
+
+	tmp2 = sigmoidGPU(tmp);
+	tmp1 = sigmoidGPU(tmp, true);
+
+	std::cout << "Sig: " << tmp2;
+	std::cout << "S_p: " << tmp1;
 
 	return 0;
 }

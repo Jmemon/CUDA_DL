@@ -7,10 +7,13 @@
 
 std::vector<double> binaryStepGPU(std::vector<double>& z);
 
-std::vector<double> sigmoidGPU(std::vector<double>& z);
+// binary step deriv is weird, it seems like it would always be 0, except at 0
+// but seems like backprop would stop working
 
-std::vector<double> reluGPU(std::vector<double>& z);
+std::vector<double> sigmoidGPU(std::vector<double>& z, bool diff = false);
 
-std::vector<double> leakyReluGPU(std::vector<double>& z);
+std::vector<double> reluGPU(std::vector<double>& z, bool diff = false);
+
+std::vector<double> leakyReluGPU(std::vector<double>& z, bool diff = false);
 
 #endif // ACTIVATION_CUH
