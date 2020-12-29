@@ -36,6 +36,45 @@ double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batc
 	return mse;
 } // end mseGPU
 
+__global__ void msePrime(double *x, double *y, int len)
+{
+	int g_idx = gridDim.x * blockDim.x * (blockDim.y * blockIdx.y + threadIdx.y)
+		+ blockDim.x * blockIdx.x + threadIdx.x;
+
+	if (g_idx >= len)
+		return;
+
+	y[g_idx] = x[g_idx] - y[g_idx];
+} // end msePrime
+
+std::vector<double> msePrimeGPU(std::vector<double> &a, std::vector<double> &y, int size, int batch_size)
+{
+	double *d_a, *d_y;
+	std::vector<double> dC(a.size());
+	int BLOCKSIZE = a.size() >= 512 ? 512 : a.size();
+
+	cudaMalloc((void **) &d_a, a.size() * sizeof(double));
+	cudaMalloc((void **) &d_y, y.size() * sizeof(double));
+
+	cudaMemcpy(d_a, a.data(), a.size() * sizeof(double), cudaMemcpyHostToDevice);
+
+	dim3 GRID((a.size() + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE);
+
+	msePrime<<<GRID, BLOCK, 0>>>(d_a, d_y, size * batch_size);
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(dC.data(), d_y, a.size() * sizeof(double), cudaMemcpyDeviceToHost);
+
+	for (int i = 0; i < dC.size(); i++)
+		dC[i] /= batch_size;
+
+	cudaFree(d_a);
+	cudaFree(d_y);
+
+	return dC;
+} // end msePrimeGPU
+
 struct logLoss_functor
 {
 	
@@ -43,7 +82,7 @@ struct logLoss_functor
 
 	__host__ __device__ double operator() (const double &x, const double &y) const 
 	{
-		return -y *log(x);
+		return -1 * y * log(x);
 	}
 
 }; // end ln_functor
@@ -65,6 +104,45 @@ double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size,
 
 	return logLoss;
 } // end crossEntropyGPU
+
+__global__ void crossEntropyPrime(double *a, double *y, int len)
+{
+	int g_idx = gridDim.x * blockDim.x * (blockIdx.y * blockDim.y + threadIdx.y)
+		+ blockIdx.x * blockDim.x + threadIdx.x;
+	
+	if (g_idx >= len)
+		return;
+
+	y[g_idx] = -1 * y[g_idx] / a[g_idx];
+} // end crossEntropyPrime
+
+std::vector<double> crossEntropyPrimeGPU(std::vector<double> &a, std::vector<double> &y, int size, int batch_size)
+{
+	double *d_a, *d_y;
+	std::vector<double> dC(a.size());
+	int BLOCKSIZE = a.size() >= 512 ? 512 : a.size();
+
+	cudaMalloc((void **) &d_a, a.size() * sizeof(double));
+	cudaMalloc((void **) &d_y, y.size() * sizeof(double));
+
+	cudaMemcpy(d_a, a.data(), a.size() * sizeof(double), cudaMemcpyHostToDevice);
+
+	dim3 GRID((a.size() + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE);
+
+	crossEntropyPrime<<<GRID, BLOCK, 0>>>(d_a, d_y, size * batch_size);
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(dC.data(), d_y, a.size() * sizeof(double), cudaMemcpyDeviceToHost);
+
+	for (int i = 0; i < dC.size(); i++)
+		dC[i] /= batch_size;
+
+	cudaFree(d_a);
+	cudaFree(d_y);
+
+	return dC;
+} // end msePrimeGPU
 
 /*
 // block size will always be 512 in this file

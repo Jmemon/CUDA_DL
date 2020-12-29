@@ -19,7 +19,17 @@ size is the length of y (if x is mxn, size = m)
 // n is the batch size
 double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size); 
 
+// mse derivative
+// outputs vector where each elem is deriv of mse wrt corresponding entry of aL
+// deriv: dC/daL_i = (1/batch_size) (y_i - aL_i)
+std::vector<double> msePrimeGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size);
+
 // should be used for classification
 double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size);
+
+// logLoss derivative
+// outputs vector where each elem is deriv of logLoss wrt corresponding entry of aL
+// deriv: dC/daL_i = (1/batch_size) (y_i / aL_i)
+std::vector<double> crossEntropyPrimeGPU(std::vector<double> &a, std::vector<double> &y, int size, int batch_size);
 
 #endif // LOSS_CUH

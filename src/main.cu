@@ -17,6 +17,8 @@ int main(int argc, char *argv[]) {
 
 	double err;
 
+	std::vector<double> deriv(5);
+
 	std::vector<double> x(500);
 	// batch_size = 5
 
@@ -52,11 +54,9 @@ int main(int argc, char *argv[]) {
 	std::vector<double> tmp2;
 	std::vector<double> tmp1;
 
-	tmp2 = sigmoidGPU(tmp);
-	tmp1 = sigmoidGPU(tmp, true);
+	tmp2 = msePrimeGPU(tmp, y, 2, 5);
 
-	std::cout << "Sig: " << tmp2;
-	std::cout << "S_p: " << tmp1;
+	std::cout << "msePrime: " << tmp2;
 
 	return 0;
 }
