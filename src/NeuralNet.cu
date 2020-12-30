@@ -7,6 +7,18 @@
 #include <exception>
 #include <vector>
 
+/* -------------------------------------------------- 
+Constructor 
+
+Parameters: 
+	l - l[i] is number of neurons in layer i
+	f - f[i] is activation func for layer i + 1
+	e - loss function
+
+Initializes layers to l, funcs to f, errFunc to e
+Randomly initializes weights to values between 0 and 1, 
+	We determine the sizes of the weight matrices using the values given in l
+-------------------------------------------------- */
 NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e) 
 	: layers(l), funcs(f), errFunc(e)
 {
@@ -29,6 +41,18 @@ NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e)
 
 } // end NeuralNet
 
+/* -------------------------------------------------- 
+activation
+
+Parameters: 
+	x - vector to apply activation func to 
+	f - activation func to apply to x
+
+Uses the cuda kernels defined in Activation.cu on x
+
+Returns:
+	a - vector equal to f(x)
+-------------------------------------------------- */
 std::vector<double> NeuralNet::activation(std::vector<double> &x, Activation f) 
 {
 	if (x.size() < 1)
@@ -57,6 +81,22 @@ std::vector<double> NeuralNet::activation(std::vector<double> &x, Activation f)
 	return a;
 } // end activation
 
+/* -------------------------------------------------- 
+forwardPass
+
+Parameters: 
+	x - vector to apply activation func to
+	  - can be a matrix in Row-Major form 
+
+Puts input x through the network and generates a prediction
+If x is a matrix where each column is one input, it will do all as a batch
+Stores each layer's unactivated value and activated one too for output layer
+
+Returns:
+	out - vector with the intermediate values and output 
+		- if network is n-m-k and batch_size is 5, then out will have
+		5m + 5k + 5k elements, 5 because of the batchsize
+-------------------------------------------------- */
 std::vector<double> NeuralNet::forwardPass(std::vector<double> &x)
 {
 	// -- Error Check --------------------------------------------------------
@@ -104,6 +144,20 @@ std::vector<double> NeuralNet::forwardPass(std::vector<double> &x)
 	return out;
 } // end forwardPass
 
+/* -------------------------------------------------- 
+calcLoss
+
+Parameters: 
+	x - vector of predicted outputs 
+	  - can be a matrix in Row-Major form 
+	y - vector of actual outputs
+	  - can be a matrix in Row-Major form
+
+Applies whatever loss function is specified by NeuralNet.errFunc
+
+Returns:
+	err - double which is average error for batch of inputs
+-------------------------------------------------- */
 double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
 {
 	// -- Error Check --------------------------------------------------------
@@ -144,10 +198,10 @@ double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
 	switch (errFunc)
 	{
 		case mse:
-			err = mseGPU(x, y, layers[layers.size() - 1], x.size() / layers[layers.size() - 1]);
+			err = mseGPU(x, y, x.size() / layers[layers.size() - 1]);
 			break;
 		case logLoss:
-			err = crossEntropyGPU(x, y, layers[layers.size() - 1], x.size() / layers[layers.size() - 1]);
+			err = crossEntropyGPU(x, y, x.size() / layers[layers.size() - 1]);
 			break;
 		default:
 			throw std::domain_error("This loss function has not been implemented");
@@ -156,8 +210,12 @@ double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
 	return err;
 } // end error
 
+/* -------------------------------------------------- 
+printNN
 
-
+Prints the size of each layer, the activation function
+	at each layer, and the loss function at the end of the network
+-------------------------------------------------- */
 void NeuralNet::printNN() const
 {
 	std::cout << "Layer 0: " << layers[0] << std::endl;	
@@ -205,6 +263,14 @@ void NeuralNet::printNN() const
 
 } // end printNN
 
+/* -------------------------------------------------- 
+printWeights
+
+Parameter:
+	l - layers to print weights for (range is 0 to layers.size() - 2)
+
+Prints all the weights from layer l to l + 1
+-------------------------------------------------- */
 void NeuralNet::printWeights(int l) const 
 {
 	if (l < 0)

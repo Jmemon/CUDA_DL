@@ -5,6 +5,8 @@
 #include "Loss.cuh"
 #include <vector>
 
+// more detailed information on each function is in src/NeuralNet.cu
+
 typedef enum Activation {
 	binary_step,
 	sigmoid,

@@ -2,21 +2,22 @@
 #include <vector>
 #include <algorithm> // std::max
 
-// https://github.com/lzhengchun/matrix-cuda/blob/master/matrix_cuda.cu 
-/*
+/* ---------------------------------------------------------------
+matMul
+
 Parameters: 
-            &a GPU device pointer to a m X n matrix (A)
-            &b GPU device pointer to a n X k matrix (B)
-            &c GPU device output purpose pointer to a m X k matrix (C) 
-            to store the result
-Note:
-    grid and block should be configured as:
-        dim3 dimGrid((k + BLOCK_SIZE - 1) / BLOCK_SIZE, (m + BLOCK_SIZE - 1) / BLOCK_SIZE);
-        dim3 dimBlock(BLOCK_SIZE, BLOCK_SIZE);
-    further speedup can be obtained by using shared memory to decrease global memory access times
-return: none
-*/
-// Note Grid gets bigger than 1x1 only if k or m is bigger than BLOCK_SIZE
+	a - double ptr representing matrix A in row-major form
+    b - double ptr representing matrix B in row-major form
+    c - double ptr where AB will be stored in row-major form
+	m - rows in A / C
+	n - cols in A / rows in B
+	k - cols in B / C
+
+Multiplies the matrices stored in row-major form in a and b, then stores
+	the output in c
+
+Could be optimized much further with shared memory
+--------------------------------------------------------------- */
 __global__ void matMul(double *a, double *b, double *c, int m, int n, int k)
 {
 	int row = blockIdx.y * blockDim.y + threadIdx.y; 
@@ -36,6 +37,21 @@ __global__ void matMul(double *a, double *b, double *c, int m, int n, int k)
 
 } // end matMul
 
+/* ---------------------------------------------------------------
+matMulGPU
+
+Parameters: 
+	a - vector representing first matrix
+    b - vector representing second matrix
+	m - rows in a
+	n - cols in a / rows in b
+	k - cols in b
+
+Calls cuda kernel matMul on a.data() and b.data()
+
+Returns:
+	c - vector representing AB (has dim m x k)
+--------------------------------------------------------------- */
 std::vector<double> matMulGPU(std::vector<double>& a, std::vector<double>& b, int m, int n, int k)
 {
 	double *d_a, *d_b, *d_c;
@@ -64,6 +80,17 @@ std::vector<double> matMulGPU(std::vector<double>& a, std::vector<double>& b, in
 	return c;
 } // end matMulGPU
 
+/* ---------------------------------------------------------------
+hadamard
+
+Parameters: 
+	a - double ptr representing matrix A in row-major form
+    b - double ptr representing matrix B in row-major form
+    c - double ptr where A o B will be stored in row-major form
+	len - the length of row-major form of A, B, and C
+
+Performs Hadamard operation (element-wise mult) and stores result in c
+--------------------------------------------------------------- */
 __global__ void hadamard(double *a, double *b, double *c, int len)
 {
 	int g_idx = gridDim.x * blockDim.x * (blockIdx.y * blockDim.y + threadIdx.y)
@@ -75,6 +102,20 @@ __global__ void hadamard(double *a, double *b, double *c, int len)
 	c[g_idx] = a[g_idx] + b[g_idx];
 } // end haramard
 
+/* ---------------------------------------------------------------
+hadamardGPU
+
+Parameters: 
+	a - vector representing matrix A
+    b - vector representing matrix B
+	m - rows in A / B
+	n - cols in A / B
+
+Calls cuda kernel hadamard on a.data() and b.data()
+
+Returns:
+	c - vector representing A o B (has dim m x n)
+--------------------------------------------------------------- */
 std::vector<double> hadamardGPU(std::vector<double>& a, std::vector<double>& b, int m, int n)
 {
 	double *d_a, *d_b, *d_c;
@@ -103,6 +144,17 @@ std::vector<double> hadamardGPU(std::vector<double>& a, std::vector<double>& b, 
 	return c;
 } // end hadamardGPU
 
+/* ---------------------------------------------------------------
+matAdd
+
+Parameters: 
+	a - double ptr representing matrix A in row-major form
+    b - double ptr representing matrix B in row-major form
+    c - double ptr where A + B will be stored in row-major form
+	len - the length of row-major form of A, B, and C
+
+Performs A + B and stores result in c
+--------------------------------------------------------------- */
 __global__ void matAdd(double *a, double *b, double *c, int len)
 {
 	int g_idx = gridDim.x * blockDim.x * (blockIdx.y * blockDim.y + threadIdx.y)
@@ -114,6 +166,20 @@ __global__ void matAdd(double *a, double *b, double *c, int len)
 	c[g_idx] = a[g_idx] + b[g_idx];
 } // end matAdd
 
+/* ---------------------------------------------------------------
+matAddGPU
+
+Parameters: 
+	a - vector representing matrix A
+    b - vector representing matrix B
+	m - rows in A / B
+	n - cols in A / B
+
+Calls cuda kernel matAdd on a.data() and b.data()
+
+Returns:
+	c - vector representing A + B (has dim m x n)
+--------------------------------------------------------------- */
 std::vector<double> matAddGPU(std::vector<double>& a, std::vector<double>& b, int m, int n)
 {
 	double *d_a, *d_b, *d_c;
@@ -142,32 +208,47 @@ std::vector<double> matAddGPU(std::vector<double>& a, std::vector<double>& b, in
 	return c;
 } // end matAddGPU
 
-// https://github.com/lzhengchun/matrix-cuda/blob/master/matrix_cuda.cu 
-/*
-parameters: 
-            &mat_in GPU device pointer to a rows X cols matrix
-            &mat_out GPU device output purpose pointer to a cols X rows matrix 
-            to store the result
-Note:
-    grid and block should be configured as:
-        dim3 dim_grid((n - 1) / BLOCK_SIZE + 1, (n - 1) / BLOCK_SIZE + 1, 1);
-        dim3 dim_block(BLOCK_SIZE, BLOCK_SIZE, 1);
-return: none
-*/
-__global__ void matTrans(double *mat_in, double *mat_out, unsigned int rows, unsigned int cols)
-{
-	unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
+/* ---------------------------------------------------------------
+matTrans
 
-	if (idx < cols && idy < rows) 
+Parameters: 
+	a - double ptr representing matrix A in row-major form
+    aT - double ptr representing matrix AT in row-major form
+	m - rows in A / cols in AT
+	n - cols in A / rows in AT
+
+Transposes matrix A
+--------------------------------------------------------------- */
+__global__ void matTrans(double *a, double *aT, int m, int n)
+{
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+	if (col >= n || row >= m)
+		return;
+
+	if (col < n && row < m) 
 	{
-		unsigned int pos = idy * cols + idx;
-		unsigned int trans_pos = idx * rows + idy;
-		mat_out[trans_pos] = mat_in[pos];
+		int pos = row * n + col;
+		int trans_pos = col * m + row;
+		aT[trans_pos] = a[pos];
 	} // end if
 
 } // end matTrans
 
+/* ---------------------------------------------------------------
+matTransGPU
+
+Parameters: 
+	a - vector representing matrix A
+	m - rows in A / cols in AT
+	n - cols in A / rows in AT
+
+Calls cuda kernel matTrans on a.data()
+
+Returns:
+	aT - vector representing AT
+--------------------------------------------------------------- */
 std::vector<double> matTransGPU(std::vector<double>& a, int m, int n)
 {
 	double *d_a, *d_aT;

@@ -3,21 +3,21 @@
 
 #include <vector>
 
+// More detailed information about functions in src/Loss.cu
+
 // Note that these functions assume at most a 2d grid of blocks
 
 /* -----------------------------------------------
-err is where the errors will be stored
-e_size is the number of errors to calculate (if x is mxn, e_size = n)
 x is where the networks output should go
 y is where the actual output should go
-size is the length of y (if x is mxn, size = m)
+batch_size is number of samples in batch
 ----------------------------------------------- */
 
 // should be use for regression stuff
 // (1/2n)sum[norm(yhat_i - y_i)^2] 
 // where i will go through each prediction-actual pair
 // n is the batch size
-double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size); 
+double mseGPU(std::vector<double> &x, std::vector<double> &y, int batch_size); 
 
 // mse derivative
 // outputs vector where each elem is deriv of mse wrt corresponding entry of aL
@@ -25,7 +25,7 @@ double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batc
 std::vector<double> msePrimeGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size);
 
 // should be used for classification
-double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size);
+double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int batch_size);
 
 // logLoss derivative
 // outputs vector where each elem is deriv of logLoss wrt corresponding entry of aL

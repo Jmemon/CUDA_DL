@@ -5,6 +5,12 @@
 #include <iostream>
 #include <stdlib.h>
 
+/* ----------------------------------------------
+mse_functor
+
+Defines operator that returns squared difference between x and y
+For use with thrust::transform()
+---------------------------------------------- */
 struct mse_functor
 {
 
@@ -17,8 +23,22 @@ struct mse_functor
 
 }; // end mse_functor
 
-// sums the mses of each prediction in a batch, then divide them by 2*batch_size
-double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size)
+/* ----------------------------------------------
+mseGPU
+
+Parameters:
+	x - vector of predictions, can be matrix in row-major form 
+	y - vector of actual outputs, can be matrix in row-major form
+	batch_size - number of samples in batch
+
+Uses thrust device_vector and transform to get error
+Uses operation defined in mse_functor with thrust::transform
+Outputs (1/(2*batch_size))(sum{norm{y-aL}^2})
+
+Returns:
+	mse - averaged mean-square error over all samples in batch
+---------------------------------------------- */
+double mseGPU(std::vector<double> &x, std::vector<double> &y, int batch_size)
 {
 	double mse = 0.0;
 	thrust::device_vector<double> d_x(x);
@@ -36,6 +56,17 @@ double mseGPU(std::vector<double> &x, std::vector<double> &y, int size, int batc
 	return mse;
 } // end mseGPU
 
+/* ----------------------------------------------
+msePrime
+
+Parameters:
+	x - vector representing predicted output, can be matrix in row-major form
+	y - vector representing actual output, can be matrix in row-major form
+	len - length of x and y
+
+Stores the derivative of mse in y
+Derivative for element i: x_i - y_i
+---------------------------------------------- */
 __global__ void msePrime(double *x, double *y, int len)
 {
 	int g_idx = gridDim.x * blockDim.x * (blockDim.y * blockIdx.y + threadIdx.y)
@@ -47,6 +78,20 @@ __global__ void msePrime(double *x, double *y, int len)
 	y[g_idx] = x[g_idx] - y[g_idx];
 } // end msePrime
 
+/* ----------------------------------------------
+msePrimeGPU
+
+Parameters:
+	a - vector of predicted outputs, can be matrix in row-major form
+	y - vector of actual outputs, can be matrix in row-major form
+	size - number of rows in a/y
+	batch_size - number of cols in a/y (number of samples in batch)
+
+Calls msePrime cuda kernel on a and y
+
+Returns:
+	dC - vector of derivative of MSE wrt each aL_i
+---------------------------------------------- */
 std::vector<double> msePrimeGPU(std::vector<double> &a, std::vector<double> &y, int size, int batch_size)
 {
 	double *d_a, *d_y;
@@ -75,6 +120,12 @@ std::vector<double> msePrimeGPU(std::vector<double> &a, std::vector<double> &y, 
 	return dC;
 } // end msePrimeGPU
 
+/* ----------------------------------------------
+logLoss_functor
+
+Defines operator that returns -y*log_e(x)
+For use with thrust::transform()
+---------------------------------------------- */
 struct logLoss_functor
 {
 	
@@ -87,7 +138,22 @@ struct logLoss_functor
 
 }; // end ln_functor
 
-double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size, int batch_size)
+/* ----------------------------------------------
+crossEntropyGPU
+
+Parameters:
+	x - vector of predictions, can be matrix in row-major form 
+	y - vector of actual outputs, can be matrix in row-major form
+	batch_size - number of samples in batch
+
+Uses thrust device_vector and transform to get error
+Uses operation defined in logLoss_functor with thrust::transform
+Outputs (1/batch_size)(sum{-y*log_e(x)})
+
+Returns:
+	logLoss - cross entropy loss over all samples averaged with batch_size
+---------------------------------------------- */
+double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int batch_size)
 {
 	double logLoss = 0.0;
 	thrust::device_vector<double> d_x(x);
@@ -105,6 +171,17 @@ double crossEntropyGPU(std::vector<double> &x, std::vector<double> &y, int size,
 	return logLoss;
 } // end crossEntropyGPU
 
+/* ----------------------------------------------
+crossEntropyPrime
+
+Parameters:
+	a - vector representing predicted output, can be matrix in row-major form
+	y - vector representing actual output, can be matrix in row-major form
+	len - length of x and y
+
+Stores the derivative of crossEntropy in y
+Derivative for element i: -y_i / a_i
+---------------------------------------------- */
 __global__ void crossEntropyPrime(double *a, double *y, int len)
 {
 	int g_idx = gridDim.x * blockDim.x * (blockIdx.y * blockDim.y + threadIdx.y)
@@ -116,6 +193,20 @@ __global__ void crossEntropyPrime(double *a, double *y, int len)
 	y[g_idx] = -1 * y[g_idx] / a[g_idx];
 } // end crossEntropyPrime
 
+/* ----------------------------------------------
+crossEntropyPrimeGPU
+
+Parameters:
+	a - vector of predicted outputs, can be matrix in row-major form
+	y - vector of actual outputs, can be matrix in row-major form
+	size - number of rows in a/y
+	batch_size - number of cols in a/y (number of samples in batch)
+
+Calls crossEntropyPrime cuda kernel on a and y
+
+Returns:
+	dC - vector of derivative of Cross Entropy wrt each aL_i
+---------------------------------------------- */
 std::vector<double> crossEntropyPrimeGPU(std::vector<double> &a, std::vector<double> &y, int size, int batch_size)
 {
 	double *d_a, *d_y;
