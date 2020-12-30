@@ -43,18 +43,22 @@ class NeuralNet {
 		// applies activation function to x
 		// returns output in vector
 	
-		std::vector<double> forwardPass(std::vector<double> &x);
+		std::vector<std::vector<double> > forwardPass(std::vector<double> &x);
 		// x can be a matrix in row-major form
 		// We use layers[0] to determine the batchsize
-		// returns vector<double>
-		// 	this vector contains the z's for each layer and aL (output)
-		// 	use the layers vector to determine where each starts and ends
+		// returns vector<vector<double> >
+		// 	this vector contains vectors with the z's for each layer and aL (output)
 	
 		double calcLoss(std::vector<double> &x, std::vector<double> &y);
 		// x can be matrix in row-major form
 		// use layer[layers.size() - 1] to detetmine output size
 		// returns double which is average of error for each sample in batch
 		// 	SO BE CAREFUL ABOUT ONLY PUTTING ONE BATCH IN AT A TIME
+
+		std::vector<std::vector<double> > backwardPass(std::vector<sdt::vector<double> > &FP, std::vector<double> &y, int batch_size);
+		// FP is output of forwardPass
+		// y is true value for each batch 
+		// batch_size is number of samples in batch
 	
 		void printNN() const;
 		// prints info about the neural net
