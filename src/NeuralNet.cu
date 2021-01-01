@@ -53,7 +53,7 @@ Uses the cuda kernels defined in Activation.cu on x
 Returns:
 	a - vector equal to f(x)
 -------------------------------------------------- */
-std::vector<double> NeuralNet::activation(std::vector<double> &x, Activation f) 
+std::vector<double> NeuralNet::activation(std::vector<double> &x, Activation f, bool diff) 
 {
 	if (x.size() < 1)
 		throw std::length_error("Layer must have at least one node");
@@ -63,16 +63,20 @@ std::vector<double> NeuralNet::activation(std::vector<double> &x, Activation f)
 	switch(f)
 	{
 		case binary_step:
+
+			if (diff)
+				throw std::domain_error("activation: No binStep deriv implemented");
+
 			a = binaryStepGPU(x);
 			break;
 		case sigmoid:
-			a = sigmoidGPU(x);
+			a = sigmoidGPU(x, diff);
 			break;
 		case relu:
-			a = reluGPU(x);
+			a = reluGPU(x, diff);
 			break;
 		case leaky_relu:
-			a = leakyReluGPU(x);
+			a = leakyReluGPU(x, diff);
 			break;
 		default:
 			throw std::domain_error("This activation functions is not implemented.");
@@ -216,7 +220,7 @@ Parameters:
 Returns:
 
 -------------------------------------------------- */
-std::vector<std::vector<double> > backwardPass(std::vector<std::vector<double> > &FP, std::vector<double> &y, int batch_size)
+std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vector<double> > &FP, std::vector<double> &y, int batch_size)
 {
 	// ---Error Check------------------------------------------------
 	int tmp = 0;
@@ -225,97 +229,92 @@ std::vector<std::vector<double> > backwardPass(std::vector<std::vector<double> >
 		tmp += layers[i];
 
 	if (FP.size() / batch_size != tmp)
-		throw std::length_error("backwardPass: Invalid Vector size to FP")
+		throw std::length_error("backwardPass: Invalid Vector size to FP");
 
 	if (y.size() / batch_size != layers[layers.size() - 1])
-		throw std::length_error("backwardPass: Invalid Vector size to y")
+		throw std::length_error("backwardPass: Invalid Vector size to y");
 
 	if (batch_size < 1)
-		throw std::invalid_argument("backwardPass: there must be at least one sample in batch")
+		throw std::invalid_argument("backwardPass: there must be at least one sample in batch");
 	// -------------------------------------------------------------- 
 
 	std::vector<std::vector<double> > dC(layers.size() - 1);
-	// dC[i] is layers[i + 1] x layers[i]
-	// has one entry for each weight matrix
+	std::vector<double> delta, a, w;
 
-	std::vector<double> delta, tmp, dA, A;
+	std::vector<std::vector<double> >::iterator it_dC = dC.end(), it_FP = FP.end(), it_weights = weights.end();
+	std::vector<int>::iterator it_layers = layers.end();
+	std::vector<Activation>::iterator it_funcs = funcs.end();
 
-	// tmp <- -aL
-	tmp = scalarMultGPU(FP[FP.size() - 1], -1, y.size(), 1);
-
-	// dA <- a'(zL)
-	// A <- a(zL-1)
-	switch (funcs[funcs.size() - 1])
-	{
-		case binary_step:
-			throw std::domain_error("backwardPass: No binaryStep derivative implemented")
-			break;
-		case sigmoid:
-			A = sigmoidGPU(FP[FP.size() - 3]);
-			dA = sigmoidGPU(FP[FP.size() - 2], true);
-			break;
-		case relu:
-			A = reluGPU(FP[FP.size() - 3]);
-			dA = reluGPU(FP[FP.size() - 2], true);
-			break;
-		case leaky_relu:
-			A = leakyReluGPU(FP[FP.size() - 3]);
-			dA = leakyReluGPU(FP[FP.size() - 2], true);
-			break;
-		default:
-			throw std::domain_error("backwardPass: Activation func not implemented");
-	} // end switch
-
-	// delta <- del_a(C)
-	switch(errFunc)
+	switch (errFunc)
 	{
 		case mse:
-			delta = matAddGPU(y, tmp, y.size() / batch_size, batch_size);
+			delta = msePrimeGPU(*it_FP, y, *it_layers, batch_size);
 			break;
 		case logLoss:
-			tmp = matReciprocalGPU(tmp, y.size() / batch_size, batch_size);
-			delta = hadamardGPU(tmp, y, y.size() / batch_size, batch_size);
+			delta = crossEntropyPrimeGPU(*it_FP, y, *it_layers, batch_size);
 			break;
 		default:
-			throw std::domain_error("backwardPass: This errFunc is not implemented");
+			throw std::domain_error("backwardPass: This loss func hasn't been implemented");
 	} // end switch
-	
-	// delta <- del_a(C) o a'(zL)
-	delta = hadamardGPU(delta, dA, y.size() / batch_size, batch_size);
 
-	// A <- a(L-1)^T
-	A = matTransGPU(A, layers[layers.size() - 2], batch_size);
+	// a <- act'(zL)
+	a = activation(*(it_FP - 1), *it_funcs, true);
 
-	// dC[dc.size() - 1] <- 
-	dC[dC.size() - 1] = matMultGPU(delta, A, y.size() / batch_size, batch_size, layers[layers.size() - 2]);
+	// delta <- del_a(C) o act'(zL) = deltaL
+	delta = hadamardGPU(delta, a, *it_layers, batch_size);
 
-	for (int i = layers.size() - 3; i >= 0; i--)
+	// a <- a(z(L-1))
+	a = activation(*(it_FP - 2), *(it_funcs - 1));
+
+	// a <- act(z(L-1))^T
+	a = matTransGPU(a, *(it_layers - 1), batch_size);
+
+	// pts to z(L-1)
+	it_FP -= 2;
+
+	// pts to layers[L - 1]
+	it_layers -= 1;
+
+	// pts to funcs[L - 1]
+	it_funcs -= 1;
+
+	// it_dC already pts to dC[L]
+	// it_weights already points to weights[L]
+
+	while (it_dC != dC.begin() - 1)
 	{
-		delta = matMultGPU(weights[i + 1], delta, layers[i + 2], layers[i + 1], batch_size)
+		// l denotes layer 
 
-		switch (funcs[i])
-		{
-			case binary_step:
-				dA = binaryStepGPU(FP[i - 1], true);
-			case sigmoid:
-				dA = sigmoidGPU(FP[i - 1], true);
-			case relu:
-				dA = reluGPU(FP[i - 1], true);
-			case leaky_relu:
-				dA = leakyReluGPU(FP[i - 1], true);
-			default:
-				throw std::domain_error("backwardPass: Activation func not implemented");
-		} // end switch
+		// w <- w[l+1]^T    [l+1 x l --> l x l+1] 
+		w = matTransGPU(*it_weights, *(it_layers + 1), *(it_layers));
 
-		// delta <- (w^(i+1)delta^(i+1)) o a'(z^(i))
-		delta = hadamardGPU(delta, dA, layers[i + 2], batch_size);
+		// delta <- (w[l+1]^T)(delta[l+1])
+		delta = matMulGPU(w, delta, *it_layers, *(it_layers + 1), batch_size);
 
-		// tmp <- 
+		// a <- act'(z[l])
+		a = activation(*it_FP, *it_funcs, true);
 
-		dC[i] = matMultGPU(delta, tmp, layers[i + 2], batch_size, layers[i + 1]);
+		// delta <- delta[l]
+		delta = hadamardGPU(delta, a, *it_layers, batch_size);
 
-	} // end for
+		// a <- act(z(l-1))
+		a = activation(*(it_FP - 1), *(it_funcs - 1));
 
+		// a <- act(z(l-1))^T
+		a = matTransGPU(a, *(it_layers - 1), batch_size);
+
+		// it_dC[l] <- (delta[l])(act[l-1]^T)
+		*it_dC = matMulGPU(delta, a, *it_layers, batch_size, *(it_layers - 1));
+
+		// decrement iterators
+		it_FP -= 1;
+		it_layers -= 1;
+		it_funcs -= 1;
+		it_weights -= 1;
+		it_dC -= 1;	
+	} // end while
+
+	return dC;
 } // end backwardPass
 
 /* -------------------------------------------------- 

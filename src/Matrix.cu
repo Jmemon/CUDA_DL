@@ -128,7 +128,7 @@ std::vector<double> scalarMultGPU(std::vector<double>& a, double c, int m, int n
 	dim3 GRID((n + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
 	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
 
-	hadamard<<<GRID, BLOCK, 0>>>(d_a, c, m * n);
+	scalarMult<<<GRID, BLOCK, 0>>>(d_a, c, m * n);
 	cudaDeviceSynchronize();
 
 	cudaMemcpy(b.data(), d_a, m * n * sizeof(double), cudaMemcpyDeviceToHost);
@@ -303,13 +303,13 @@ std::vector<double> matReciprocalGPU(std::vector<double>& a, int m, int n)
 {
 	double *d_a;
 	std::vector<double> c(m * n);
-	int BLOCKSIZE = m >= 32 || k >= 32 ? 32 : std::max(m, k);	
+	int BLOCKSIZE = m >= 32 || n >= 32 ? 32 : std::max(m, n);	
 
 	cudaMalloc((void **) &d_a, m * n * sizeof(double));
 
 	cudaMemcpy(d_a, a.data(), m * n * sizeof(double), cudaMemcpyHostToDevice);
 	
-	dim3 GRID((k + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 GRID((n + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
 	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
 
 	matReciprocal<<<GRID, BLOCK, 0>>>(d_a, m * n); 

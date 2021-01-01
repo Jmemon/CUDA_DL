@@ -22,13 +22,13 @@ typedef enum Loss {
 
 class NeuralNet {
 	private:
-		const std::vector<int> layers; 
+		std::vector<int> layers; 
 		// position i containts num nodes in layer i (first layer is layer 0)
 
 		std::vector<std::vector<double> > weights; 
 		// vector containing weight matrixes in row major form (vect of vects)
 
-		const std::vector<Activation> funcs; 
+		std::vector<Activation> funcs; 
 		// vector containing activation func to apply to (W_i)x_i at position i
 
 		const Loss errFunc;
@@ -39,7 +39,7 @@ class NeuralNet {
 		// contructor which initializes data members
 		// takes vectors of layer sizes and activation functions as input
 
-		std::vector<double> activation(std::vector<double> &x, Activation f);
+		std::vector<double> activation(std::vector<double> &x, Activation f, bool diff = false);
 		// applies activation function to x
 		// returns output in vector
 	
@@ -55,7 +55,7 @@ class NeuralNet {
 		// returns double which is average of error for each sample in batch
 		// 	SO BE CAREFUL ABOUT ONLY PUTTING ONE BATCH IN AT A TIME
 
-		std::vector<std::vector<double> > backwardPass(std::vector<sdt::vector<double> > &FP, std::vector<double> &y, int batch_size);
+		std::vector<std::vector<double> > backwardPass(std::vector<std::vector<double> > &FP, std::vector<double> &y, int batch_size);
 		// FP is output of forwardPass
 		// y is true value for each batch 
 		// batch_size is number of samples in batch

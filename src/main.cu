@@ -15,19 +15,15 @@ void operator/= (std::vector<double> &x, double c);
 
 int main(int argc, char *argv[]) {
 
-	double err;
-
-	std::vector<double> deriv(5);
-
-	std::vector<double> x(500);
 	// batch_size = 5
 
-	std::vector<double> y(10, 1);
-
-	std::vector<double> FP;
-
+	std::vector<double> x(500);
 	randVect(x);
 	x /= normVect(x);
+
+	std::vector<double> y(10, 1), tmp;
+
+	std::vector<std::vector<double> > FP;
 
 	std::vector<int> layers(3);
 	layers[0] = 100;
@@ -44,19 +40,14 @@ int main(int argc, char *argv[]) {
 
 	nn.printNN();
 	FP = nn.forwardPass(x);
-	std::vector<double> tmp(FP.begin() + 52 * 5, FP.end());
-	err = nn.calcLoss(tmp, y);
 
-	std::cout << "pred: " << tmp;
+	std::cout << "pred: " << *(FP.end());
 	std::cout << "actl: " << y;
-	std::cout << "err: " << err << std::endl;
 
-	std::vector<double> tmp2;
-	std::vector<double> tmp1;
+	std::vector<std::vector<double> > dC;
+	dC = nn.backwardPass(FP, y, 5);
 
-	tmp2 = msePrimeGPU(tmp, y, 2, 5);
-
-	std::cout << "msePrime: " << tmp2;
+	std::cout << dC[0];
 
 	return 0;
 }
