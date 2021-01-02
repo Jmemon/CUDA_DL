@@ -124,22 +124,24 @@ std::vector<std::vector<double> > NeuralNet::forwardPass(std::vector<double> &x)
 	int batch_size = x.size() / layers[0];  // num cols in x
 	int input_size = layers[0];				// num rows in x
 	std::vector<double> tmp_v(x);
-	std::vector<std::vector<double> > out(layers.size()); 	
+	std::vector<std::vector<double> > out(layers.size() + 1); 	
 
-	for (int i = 0; i < layers.size() - 1; i++)
+	out[0] = x;
+
+	for (int i = 1; i < layers.size(); i++)
 	{
-		out[i] = matMulGPU(weights[i], tmp_v, layers[i + 1], layers[i], batch_size);
+		out[i] = matMulGPU(weights[i - 1], tmp_v, layers[i], layers[i - 1], batch_size);
 		// out[i] = z_(i + 1)
 		// weights[i] is layers[i + 1] x layers[i]
 		// tmp_v is layers[i] x batch_size
 		// out[i] is layers[i + 1] x batch_size
 
-		tmp_v = activation(out[i], funcs[i]);	
+		tmp_v = activation(out[i], funcs[i - 1]);	
 		// tmp_v = a_(i + 1)
 
 	} // end for
 
-	out[layers.size() - 1] = tmp_v;
+	*(out.end() - 1) = tmp_v;
 
 	return out;
 } // end forwardPass
@@ -222,15 +224,20 @@ Returns:
 -------------------------------------------------- */
 std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vector<double> > &FP, std::vector<double> &y, int batch_size)
 {
+
 	// ---Error Check------------------------------------------------
-	int tmp = 0;
+	for (int i = 0; i < layers.size(); i++)
+	{
+		if (FP[i].size() / batch_size != layers[i])
+		{
+			std::cout << "HERE" << std::endl;
+			throw std::length_error("backwardPass: Invalid Vector size to FP");
+		}
+	} // end for
 
-	for (int i = 1; i < layers.size(); i++)
-		tmp += layers[i];
-
-	if (FP.size() / batch_size != tmp)
-		throw std::length_error("backwardPass: Invalid Vector size to FP");
-
+	if (FP.back().size() / batch_size != layers.back())
+		throw std::length_error("backwardsPass: Invalid Vector size to FP");
+	
 	if (y.size() / batch_size != layers[layers.size() - 1])
 		throw std::length_error("backwardPass: Invalid Vector size to y");
 
@@ -241,10 +248,10 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 	std::vector<std::vector<double> > dC(layers.size() - 1);
 	std::vector<double> delta, a, w;
 
-	std::vector<std::vector<double> >::iterator it_dC = dC.end(), it_FP = FP.end(), it_weights = weights.end();
-	std::vector<int>::iterator it_layers = layers.end();
-	std::vector<Activation>::iterator it_funcs = funcs.end();
-
+	std::vector<std::vector<double> >::iterator it_dC = dC.end() - 1, it_FP = FP.end() - 1, it_weights = weights.end() - 1;
+	std::vector<int>::iterator it_layers = layers.end() - 1;
+	std::vector<Activation>::iterator it_funcs = funcs.end() - 1;
+	
 	switch (errFunc)
 	{
 		case mse:
@@ -269,6 +276,9 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 	// a <- act(z(L-1))^T
 	a = matTransGPU(a, *(it_layers - 1), batch_size);
 
+	// dC[l] <- (deltaL)(a[L-1])^T
+	*it_dC = matMulGPU(delta, a, *it_layers, batch_size, *(it_layers - 1));
+
 	// pts to z(L-1)
 	it_FP -= 2;
 
@@ -278,10 +288,12 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 	// pts to funcs[L - 1]
 	it_funcs -= 1;
 
-	// it_dC already pts to dC[L]
+	// pts to it_dC[L - 1]
+	it_dC -= 1;
+
 	// it_weights already points to weights[L]
 
-	while (it_dC != dC.begin() - 1)
+	while (it_dC != dC.begin())
 	{
 		// l denotes layer 
 
@@ -313,6 +325,27 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 		it_weights -= 1;
 		it_dC -= 1;	
 	} // end while
+
+	// w <- w[l+1]^T    [l+1 x l --> l x l+1] 
+	w = matTransGPU(*it_weights, *(it_layers + 1), *(it_layers));
+
+	// delta <- (w[l+1]^T)(delta[l+1])
+	delta = matMulGPU(w, delta, *it_layers, *(it_layers + 1), batch_size);
+
+	// a <- act'(z2)
+	a = activation(*it_FP, *it_funcs, true);
+
+	// delta <- delta2
+	delta = hadamardGPU(delta, a, *it_layers, batch_size);
+
+	// a <- x
+	a = *(it_FP - 1);
+
+	// a <- x^T
+	a = matTransGPU(a, *(it_layers - 1), batch_size);
+
+	// it_dC[1] <- (delta[1])(x^T)
+	*it_dC = matMulGPU(delta, a, *it_layers, batch_size, *(it_layers - 1));
 
 	return dC;
 } // end backwardPass

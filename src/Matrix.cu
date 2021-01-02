@@ -27,7 +27,7 @@ __global__ void matMul(double *a, double *b, double *c, int m, int n, int k)
 	if (row >= m || col >= k)
 		return;
 
-	if(col < k && row < m) 
+	if (col < k && row < m) 
 	{
 		for(int i = 0; i < n; i++) 
 			sum += a[row * n + i] * b[i * k + col];

@@ -41,13 +41,13 @@ int main(int argc, char *argv[]) {
 	nn.printNN();
 	FP = nn.forwardPass(x);
 
-	std::cout << "pred: " << *(FP.end());
+	std::cout << "pred: " << *(FP.end() - 1);
 	std::cout << "actl: " << y;
 
 	std::vector<std::vector<double> > dC;
 	dC = nn.backwardPass(FP, y, 5);
 
-	std::cout << dC[0];
+	std::cout << dC[1];
 
 	return 0;
 }
