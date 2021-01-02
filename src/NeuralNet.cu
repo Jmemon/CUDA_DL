@@ -280,6 +280,9 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 	// dC[l] <- (deltaL)(a[L-1])^T
 	*it_dC = matMulGPU(delta, a, *it_layers, batch_size, *(it_layers - 1));
 
+	// adjust gradients for batch_size
+	*it_dC = scalarMultGPU(*it_dC, 1.0/(double)(batch_size), *it_layers, *(it_layers - 1));
+
 	// pts to z(L-1)
 	it_FP -= 2;
 
@@ -319,6 +322,9 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 		// it_dC[l] <- (delta[l])(act[l-1]^T)
 		*it_dC = matMulGPU(delta, a, *it_layers, batch_size, *(it_layers - 1));
 
+		// adjust gradients for batch_size
+		*it_dC = scalarMultGPU(*it_dC, 1.0/(double)(batch_size), *it_layers, *(it_layers - 1));
+
 		// decrement iterators
 		it_FP -= 1;
 		it_layers -= 1;
@@ -348,11 +354,74 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 	// it_dC[1] <- (delta[1])(x^T)
 	*it_dC = matMulGPU(delta, a, *it_layers, batch_size, *(it_layers - 1));
 
+	// adjust gradients for batch_size
+	*it_dC = scalarMultGPU(*it_dC, 1.0/(double)(batch_size), *it_layers, *(it_layers - 1));
+
 	return dC;
 } // end backwardPass
 
+/* ----------------------------------------------
+updateWeights
+
+Paramters:
+	W - weight matrix as vector
+	dC - dC/dW matrix as vector
+	alpha - learning rate
+	len - number of entries in W and dC
+
+Assigns new value for each weight using alpha
+---------------------------------------------- */
+__global__ void updateWeights(double *W, double *dC, double alpha, int len)
+{
+	int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if (idx < len)
+	{
+		W[idx] = W[idx] - alpha * dC[idx];
+	} // end if
+
+} // end updateWeights
+
+/* ----------------------------------------------
+updateWeightsGPU
+
+Parameters:
+	dC - gradient matrices passed to kernel
+	alpha - learning rate
+
+Updates using very vanilla grad descent approach
+
+Far better implementation is Adam
+---------------------------------------------- */
+void NeuralNet::gradDescentConstLR(std::vector<std::vector<double> >& dC, double alpha)
+{
+	for (int i = 0; i < dC.size(); i++)
+	{
+		double *d_W, *d_dC;
+		int BLOCKSIZE = dC[i].size() >= 512 ? 512 : dC[i].size();
+
+		cudaMalloc((void **) &d_W, weights[i].size() * sizeof(double));
+		cudaMalloc((void **) &d_dC, dC[i].size() * sizeof(double));
+
+		cudaMemcpy(d_W, weights[i].data(), weights[i].size() * sizeof(double), cudaMemcpyHostToDevice);	
+		cudaMemcpy(d_dC, dC[i].data(), dC[i].size() * sizeof(double), cudaMemcpyHostToDevice);
+
+		dim3 GRID((dC[i].size() + BLOCKSIZE - 1) / BLOCKSIZE);
+		dim3 BLOCK(BLOCKSIZE);
+
+		updateWeights<<<GRID, BLOCK, 0>>>(d_W, d_dC, alpha, dC[i].size());
+
+		cudaMemcpy(weights[i].data(), d_W, weights[i].size() * sizeof(double), cudaMemcpyDeviceToHost);
+
+		cudaFree(d_W);
+		cudaFree(d_dC);
+	} // end for
+
+} // end updateWeightsGPU
+
 /* -------------------------------------------------- 
 printNN
+
 
 Prints the size of each layer, the activation function
 	at each layer, and the loss function at the end of the network

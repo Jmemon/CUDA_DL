@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
 	layers.push_back(500);
 	layers.push_back(100);
-	layers.push_back(50);
+	layers.push_back(10);
 	layers.push_back(1);
 
 	funcs.push_back(sigmoid);
@@ -50,7 +50,13 @@ int main(int argc, char *argv[]) {
 	std::vector<std::vector<double> > dC;
 	dC = nn.backwardPass(FP, y, x.size() / layers[0]);
 
-	std::cout << dC[1];
+	nn.printWeights(2);
+	
+	nn.gradDescentConstLR(dC, 0.05);
+
+	nn.printWeights(2);
+
+	std::cout << dC[2];
 
 	return 0;
 }
@@ -60,7 +66,7 @@ void randVect(std::vector<double> &x)
 	srand(time(NULL));
 
 	for (int i = 0; i < x.size(); i++)
-		x[i] = (double)(rand() % 1000000) / 1000.0;
+		x[i] = (double)(rand() % 1000000) / 1000000.0;
 
 } // end randVect
 

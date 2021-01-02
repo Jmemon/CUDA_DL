@@ -59,6 +59,10 @@ class NeuralNet {
 		// FP is output of forwardPass
 		// y is true value for each batch 
 		// batch_size is number of samples in batch
+
+		void gradDescentConstLR(std::vector<std::vector<double> >& dC, double alpha);
+		// updates weights using gradients passed 
+		// uses learning rate passed to update weights as well
 	
 		void printNN() const;
 		// prints info about the neural net
