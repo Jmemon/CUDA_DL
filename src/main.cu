@@ -15,9 +15,9 @@ void operator/= (std::vector<double> &x, double c);
 
 int main(int argc, char *argv[]) {
 
-	// batch_size = 5
+	// batch_size = 10
 
-	std::vector<double> x(500);
+	std::vector<double> x(5000);
 	randVect(x);
 	x /= normVect(x);
 
@@ -25,16 +25,19 @@ int main(int argc, char *argv[]) {
 
 	std::vector<std::vector<double> > FP;
 
-	std::vector<int> layers(3);
-	layers[0] = 100;
-	layers[1] = 50;
-	layers[2] = 2;
+	std::vector<int> layers;
+	std::vector<Activation> funcs;
 
-	std::vector<Activation> funcs(2);
-	funcs[0] = sigmoid;
-	funcs[1] = leaky_relu;
+	layers.push_back(500);
+	layers.push_back(100);
+	layers.push_back(50);
+	layers.push_back(1);
 
-	Loss lFunc = mse;
+	funcs.push_back(sigmoid);
+	funcs.push_back(leaky_relu);
+	funcs.push_back(relu);
+
+	Loss lFunc = logLoss;
 
 	NeuralNet nn(layers, funcs, lFunc);
 
@@ -45,7 +48,7 @@ int main(int argc, char *argv[]) {
 	std::cout << "actl: " << y;
 
 	std::vector<std::vector<double> > dC;
-	dC = nn.backwardPass(FP, y, 5);
+	dC = nn.backwardPass(FP, y, x.size() / layers[0]);
 
 	std::cout << dC[1];
 

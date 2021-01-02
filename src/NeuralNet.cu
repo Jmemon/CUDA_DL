@@ -216,11 +216,14 @@ double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
 backwardPass
 
 Parameters: 
+	FP - result of forwardPass (should have z's for every layer and output value)
+	y - actual output
+	batch_size - samples in batch
 
-
+Uses vector iterators to move back through the network and get the gradients for Cost wrt weights
 
 Returns:
-
+	dC - vector of vectors where each vector is the deriv of cost wrt some weight
 -------------------------------------------------- */
 std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vector<double> > &FP, std::vector<double> &y, int batch_size)
 {
@@ -229,10 +232,8 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 	for (int i = 0; i < layers.size(); i++)
 	{
 		if (FP[i].size() / batch_size != layers[i])
-		{
-			std::cout << "HERE" << std::endl;
 			throw std::length_error("backwardPass: Invalid Vector size to FP");
-		}
+		
 	} // end for
 
 	if (FP.back().size() / batch_size != layers.back())
