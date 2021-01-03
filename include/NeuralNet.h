@@ -60,9 +60,13 @@ class NeuralNet {
 		// y is true value for each batch 
 		// batch_size is number of samples in batch
 
-		void gradDescentConstLR(std::vector<std::vector<double> >& dC, double alpha);
+		void sgdConstLR(std::vector<std::vector<double> >& dC, double alpha);
 		// updates weights using gradients passed 
 		// uses learning rate passed to update weights as well
+
+		void sgdADAM(std::vector<std::vector<double> >& dC, double alpha = 0.001, double beta1 = 0.9, double beta2 = 0.999, double epsilon = 0.00000001);
+		// updates weights using gradients passed
+		// uses adam to adjust learning rate based on moving 1st and 2nd moments 
 	
 		void printNN() const;
 		// prints info about the neural net

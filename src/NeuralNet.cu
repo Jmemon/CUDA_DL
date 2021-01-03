@@ -393,7 +393,7 @@ Updates using very vanilla grad descent approach
 
 Far better implementation is Adam
 ---------------------------------------------- */
-void NeuralNet::gradDescentConstLR(std::vector<std::vector<double> >& dC, double alpha)
+void NeuralNet::sgdConstLR(std::vector<std::vector<double> >& dC, double alpha)
 {
 	for (int i = 0; i < dC.size(); i++)
 	{
@@ -418,6 +418,11 @@ void NeuralNet::gradDescentConstLR(std::vector<std::vector<double> >& dC, double
 	} // end for
 
 } // end updateWeightsGPU
+
+void sgdADAM(std::vector<std::vector<double> >& dC, double alpha, double beta1, double beta2, double epsilon)
+{
+
+} // end sgdADAM
 
 /* -------------------------------------------------- 
 printNN
