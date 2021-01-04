@@ -22,4 +22,7 @@ std::vector<double> reluGPU(std::vector<double>& z, bool diff = false);
 // calls leakyRelu cuda kernel if !diff, otherwise calls leakyRelu_prime 
 std::vector<double> leakyReluGPU(std::vector<double>& z, bool diff = false);
 
+// calls exponential cuda kernel if !diff, otherwise calls exponential, since deriv(e^x) = e^x
+std::vector<double> exponentialGPU(std::vector<double>& z, bool diff = false);
+
 #endif // ACTIVATION_CUH

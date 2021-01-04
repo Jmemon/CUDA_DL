@@ -78,6 +78,9 @@ std::vector<double> NeuralNet::activation(std::vector<double> &x, Activation f, 
 		case leaky_relu:
 			a = leakyReluGPU(x, diff);
 			break;
+		case exponential:
+			a = exponentialGPU(x, diff);
+			break;
 		default:
 			throw std::domain_error("This activation functions is not implemented.");
 	} // end switch
@@ -453,6 +456,9 @@ void NeuralNet::printNN() const
 				break;
 			case leaky_relu: 
 				std::cout << "Activation: Leaky ReLU" << std::endl;
+				break;
+			case exponential:
+				std::cout << "Activation: Exponential" << std::endl;
 				break;
 			default:
 				throw std::domain_error("This activation function is not implemented");

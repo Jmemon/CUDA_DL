@@ -305,3 +305,40 @@ std::vector<double> leakyReluGPU(std::vector<double>& z, bool diff)
 
 	return a;
 } // end leakyReluGPU
+
+__global__ void exponential(double *x, int len)
+{
+	int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if (idx >= len)
+		return;
+
+	x[idx] = exp(x[idx]);
+} // end exponential
+
+std::vector<double> exponentialGPU(std::vector<double>& z, bool diff)
+{
+	double *d_z;
+	std::vector<double> a(z.size());
+	int BLOCKSIZE = z.size() >= 512 ? 512 : z.size();
+
+	cudaMalloc((void **) &d_z, z.size() * sizeof(double));
+	
+	cudaMemcpy(d_z, z.data(), z.size() * sizeof(double), cudaMemcpyHostToDevice);
+
+	dim3 GRID((z.size() + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE);
+
+	if (!diff)
+		exponential<<<GRID, BLOCK, 0>>>(d_z, z.size());
+	else
+		exponential<<<GRID, BLOCK, 0>>>(d_z, z.size());
+
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(a.data(), d_z, z.size() * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(d_z);
+
+	return a;
+} // end exponentialGPU

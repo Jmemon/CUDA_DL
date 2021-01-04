@@ -12,7 +12,8 @@ typedef enum Activation {
 	sigmoid,
 	// tanh,
 	relu,
-	leaky_relu
+	leaky_relu,
+	exponential
 } Activation;
 
 typedef enum Loss {
