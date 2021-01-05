@@ -21,6 +21,11 @@ typedef enum Loss {
 	logLoss
 } Loss;
 
+typedef enum LROptim {
+	constant,
+	adam
+} LROptim;
+
 class NeuralNet {
 	private:
 		std::vector<int> layers; 
@@ -35,8 +40,20 @@ class NeuralNet {
 		const Loss errFunc;
 		// stores the error func to use 
 
+		const LROptim alphaAlg;
+		// stores the lr optimizer to use
+
+		std::vector<std::vector<double> > gradWeightedMean;
+		// the weights average used in adam
+
+		std::vector<std::vector<double> > gradBiasedVariance;
+		// the biased variance used in adam
+
+		int adamIters;
+		// keeps track of how many times adam has been applied
+
 	public:
-		NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e); 
+		NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e, LROptim lr); 
 		// contructor which initializes data members
 		// takes vectors of layer sizes and activation functions as input
 
@@ -69,6 +86,10 @@ class NeuralNet {
 		// updates weights using gradients passed
 		// uses adam to adjust learning rate based on moving 1st and 2nd moments 
 	
+		void train(std::vector<std::vector<double> >& x, std::vector<std::vector<double> >& y, int batch_size, double alpha = 0.005);
+		// trains neural net
+		// each vector of x and y is a batch
+
 		void printNN() const;
 		// prints info about the neural net
 		// Layer Sizes

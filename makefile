@@ -25,7 +25,7 @@ main: $(OBJS)
 	$(NVCC) -arch=sm_60 $^ -o $@ $(CUDA_LIB_DIR) $(CUDA_INC_DIR) $(CUDA_LINK_LIBS)
 
 # Compile main.cu into main.o
-main.o: main.cu
+$(OBJ_DIR)/main.o: main.cu
 	$(NVCC) -arch=sm_60 -dc $^ -o $@
 
 # Compile .cpp and .cu files into .o files

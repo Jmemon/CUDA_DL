@@ -3,6 +3,7 @@
 #include "../include/Matrix.cuh"
 #include "../include/Loss.cuh"
 #include <iostream>
+#include <cmath>
 #include <stdio.h>
 #include <exception>
 #include <vector>
@@ -19,8 +20,8 @@ Initializes layers to l, funcs to f, errFunc to e
 Randomly initializes weights to values between 0 and 1, 
 	We determine the sizes of the weight matrices using the values given in l
 -------------------------------------------------- */
-NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e) 
-	: layers(l), funcs(f), errFunc(e)
+NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e, LROptim lr) 
+	: layers(l), funcs(f), errFunc(e), alphaAlg(lr), adamIters(0)
 {
 	if (l.size() < 2)
 		throw std::length_error("Network must at least have input and output layer");
@@ -30,13 +31,15 @@ NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e)
 
 	for (int i = 0; i < layers.size() - 1; i++) 
 	{
-		std::vector<double> tmp(l[i] * l[i + 1] , 0);
-		
-		for (int j = 0; j < tmp.size(); j++)
-			tmp[j] = (double)(rand() % 10000) / 10000;
+		std::vector<double> tmpW(l[i] * l[i + 1] , 0.0);
+		std::vector<double> tmpMV(l[i] * l[i + 1], 0.0);
+	
+		for (int j = 0; j < tmpW.size(); j++)
+			tmpW[j] = (double)(rand() % 10000) / 10000;
 
-		weights.push_back(tmp);
-
+		weights.push_back(tmpW);
+		gradWeightedMean.push_back(tmpMV);
+		gradBiasedVariance.push_back(tmpMV);
 	} // end for
 
 } // end NeuralNet
@@ -231,7 +234,7 @@ Returns:
 std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vector<double> > &FP, std::vector<double> &y, int batch_size)
 {
 
-	// ---Error Check------------------------------------------------
+	// -- Error Check -----------------------------------------------
 	for (int i = 0; i < layers.size(); i++)
 	{
 		if (FP[i].size() / batch_size != layers[i])
@@ -242,7 +245,7 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 	if (FP.back().size() / batch_size != layers.back())
 		throw std::length_error("backwardsPass: Invalid Vector size to FP");
 	
-	if (y.size() / batch_size != layers[layers.size() - 1])
+	if (y.size() / batch_size != layers.back())
 		throw std::length_error("backwardPass: Invalid Vector size to y");
 
 	if (batch_size < 1)
@@ -386,13 +389,13 @@ __global__ void updateWeights(double *W, double *dC, double alpha, int len)
 } // end updateWeights
 
 /* ----------------------------------------------
-updateWeightsGPU
+sgdConstLR
 
 Parameters:
 	dC - gradient matrices passed to kernel
 	alpha - learning rate
 
-Updates using very vanilla grad descent approach
+Updates using vanilla grad descent approach
 
 Far better implementation is Adam
 ---------------------------------------------- */
@@ -422,14 +425,153 @@ void NeuralNet::sgdConstLR(std::vector<std::vector<double> >& dC, double alpha)
 
 } // end updateWeightsGPU
 
-void sgdADAM(std::vector<std::vector<double> >& dC, double alpha, double beta1, double beta2, double epsilon)
-{
+/* ----------------------------------------------
+updateWeightsVect
 
+Parameters:
+	W - matrix of weights to update
+	dC - matrix of weight grads
+	alpha - matrix of alphas
+	len - length of each vect as matrix	
+
+Sets new value for each weight using alpha and dC
+---------------------------------------------- */
+__global__ void updateWeightsVect(double *W, double *dC, double *alpha, int len)
+{
+	int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if (idx < len)
+	{
+		W[idx] = W[idx] - alpha[idx] * dC[idx];
+	} // end if
+
+} // end updateWeightsVect
+
+/* ----------------------------------------------
+sgdAdam
+
+Parameters:
+
+s
+---------------------------------------------- */
+void NeuralNet::sgdADAM(std::vector<std::vector<double> >& dC, double alpha, double beta1, double beta2, double epsilon)
+{
+	double pwr;
+	std::vector<double> tmp1, tmp2, gSqr, corrM, corrV, eps;
+
+	for (int i = 0; i < dC.size(); i++)
+	{
+		gSqr = hadamardGPU(dC[i], dC[i], layers[i + 1], layers[i]);
+
+		tmp1 = scalarMultGPU(gradWeightedMean[i], beta1, layers[i + 1], layers[i]);
+		tmp2 = scalarMultGPU(dC[i], (1 - beta1), layers[i + 1], layers[i]);
+		gradWeightedMean[i] = matAddGPU(tmp1, tmp2, layers[i + 1], layers[i]);
+		
+		pwr = std::pow(beta1, adamIters);
+		corrM = scalarMultGPU(gradWeightedMean[i], 1.0 / (1 - pwr), layers[i + 1], layers[i]);
+
+		tmp1 = scalarMultGPU(gradBiasedVariance[i], beta2, layers[i + 1], layers[i]);
+		tmp2 = scalarMultGPU(gSqr, (1 - beta2), layers[i + 1], layers[i]);
+		gradBiasedVariance[i] = matAddGPU(tmp1, tmp2, layers[i + 1], layers[i]);
+
+		pwr = std::pow(beta2, adamIters);
+		corrV = scalarMultGPU(gradBiasedVariance[i], 1.0 / (1 - pwr), layers[i + 1], layers[i]);
+
+		// tmp1 becomes alpha/(sqrt(corrV) + eps)
+		eps.insert(eps.begin(), corrV.size(), epsilon);
+		tmp1 = matSqrtGPU(corrV, layers[i + 1], layers[i]);
+		tmp1 = matAddGPU(tmp1, eps, layers[i + 1], layers[i]);
+		tmp1 = matReciprocalGPU(tmp1, layers[i + 1], layers[i]);
+		tmp1 = scalarMultGPU(tmp1, alpha, layers[i + 1], layers[i]);
+		eps.clear();
+
+		// calling updateWeightsVect kernel
+		double *d_W, *d_dC, *d_alpha;
+		int BLOCKSIZE = layers[i + 1] * layers[i] >= 512 ? 512 : layers[i + 1] * layers[i];
+
+		cudaMalloc((void **) &d_W, layers[i + 1] * layers[i] * sizeof(double));
+		cudaMalloc((void **) &d_dC, layers[i + 1] * layers[i] * sizeof(double));
+		cudaMalloc((void **) &d_alpha, layers[i + 1] * layers[i] * sizeof(double));
+
+		cudaMemcpy(d_W, weights[i].data(), layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyHostToDevice);
+		cudaMemcpy(d_dC, corrM.data(), layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyHostToDevice);
+		cudaMemcpy(d_alpha, tmp1.data(), layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyHostToDevice);
+
+		dim3 GRID((layers[i + 1] * layers[i] + BLOCKSIZE - 1) / BLOCKSIZE);
+		dim3 BLOCK(BLOCKSIZE);
+
+		updateWeightsVect<<<GRID, BLOCK, 0>>>(d_W, d_dC, d_alpha, layers[i + 1] * layers[i]);
+
+		cudaMemcpy(weights[i].data(), d_W, layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyDeviceToHost);
+
+		cudaFree(d_W);
+		cudaFree(d_dC);
+		cudaFree(d_alpha);
+	} // end for
+	
+	adamIters += 1;
 } // end sgdADAM
+
+/* ---------------------------------------------- 
+train
+
+Parameters:
+	x - vector of batches of inputs
+	y - vector of batches of outputs
+	batch_size - number of samples per batch
+	lr - determines algorithm to set learning rate
+	alpha - only needs to be set if lr = constant
+		  - determines learning rate for sgd
+
+Applies a loop over FP, BP, and SGD for all batches passed
+Result is neural net that has been trained using given examples
+---------------------------------------------- */
+void NeuralNet::train(std::vector<std::vector<double> >& x, std::vector<std::vector<double> >& y, int batch_size, double alpha)
+{
+	// --- Error Check -----------------------------
+	if (x.size() != y.size())
+		throw std::length_error("train: x and y have incompatible sizes");
+
+	for (int i = 0; i < x.size(); i++)
+	{
+		if (x[i].size() / batch_size != layers[0])
+			throw std::length_error("train: x has invalid input sizes");
+
+	} // end for	
+
+	for (int i = 0; i < y.size(); i++)
+	{
+		if (y[i].size() / batch_size != layers.back())
+			throw std::length_error("train: y has invalid size");
+
+	} // end for
+	// ---------------------------------------------
+
+	std::vector<std::vector<double> > FP, dC;
+
+	for (int i = 0; i < x.size(); i++)
+	{
+		FP = forwardPass(x[i]);
+		dC = backwardPass(FP, y[i], batch_size);
+
+		switch (alphaAlg)
+		{
+			case constant:
+				sgdConstLR(dC, alpha);
+				break;
+			case adam:
+				sgdADAM(dC);
+				break;
+			default:
+				throw std::domain_error("train: this lr optimizer isn't implemented");
+		} // end switch
+
+	} // end for
+
+} // end train
 
 /* -------------------------------------------------- 
 printNN
-
 
 Prints the size of each layer, the activation function
 	at each layer, and the loss function at the end of the network
@@ -481,6 +623,18 @@ void NeuralNet::printNN() const
 	} // end switch
 
 	std::cout << std::endl;
+
+	switch (alphaAlg)
+	{
+		case constant:
+			std::cout << "LR Optimizer: None" << std::endl;
+			break;
+		case adam:
+			std::cout << "LR Optimizer: Adam" << std::endl;
+			break;
+		default:
+			throw std::domain_error("printNN: Alpha optimizer not implemented");
+	} // end swithc
 
 } // end printNN
 

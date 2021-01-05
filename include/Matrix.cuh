@@ -20,6 +20,9 @@ std::vector<double> matAddGPU(std::vector<double>& a, std::vector<double>& b, in
 // calls matrix reciprocal cuda kernel
 std::vector<double> matReciprocalGPU(std::vector<double>& a, int m, int n);
 
+// calls matrix sqrt cuda kernel
+std::vector<double> matSqrtGPU(std::vector<double>& a, int m, int n);
+
 // calls matrix tranpose cuda kernel
 std::vector<double> matTransGPU(std::vector<double>& a, int m, int n);
 

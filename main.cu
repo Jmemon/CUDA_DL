@@ -1,6 +1,6 @@
-#include "../include/NeuralNet.h"
-#include "../include/Activation.cuh"
-#include "../include/Loss.cuh"
+#include "include/NeuralNet.h"
+#include "include/Activation.cuh"
+#include "include/Loss.cuh"
 #include <iostream>
 #include <stdlib.h>
 #include <vector>
@@ -39,7 +39,9 @@ int main(int argc, char *argv[]) {
 
 	Loss lFunc = logLoss;
 
-	NeuralNet nn(layers, funcs, lFunc);
+	LROptim lr = adam;
+
+	NeuralNet nn(layers, funcs, lFunc, lr);
 
 	nn.printNN();
 	FP = nn.forwardPass(x);
@@ -52,7 +54,7 @@ int main(int argc, char *argv[]) {
 
 	nn.printWeights(2);
 	
-	nn.gradDescentConstLR(dC, 0.05);
+	nn.sgdConstLR(dC, 0.005);
 
 	nn.printWeights(2);
 

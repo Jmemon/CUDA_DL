@@ -321,6 +321,63 @@ std::vector<double> matReciprocalGPU(std::vector<double>& a, int m, int n)
 	
 	return c;
 } // end matMulGPU
+
+/* ---------------------------------------------------------------
+matSqrt
+
+Parameters: 
+	a - double ptr representing matrix A in row-major form
+	len - length of vector representing A
+
+Square root of each value in A
+--------------------------------------------------------------- */
+__global__ void matSqrt(double *a, int len)
+{
+	int g_idx = gridDim.x * blockDim.x * (blockDim.y * blockIdx.y + threadIdx.y)
+		+ blockDim.x * blockIdx.x + threadIdx.x;
+	
+	if (len >= g_idx)
+		return;
+
+	a[g_idx] = sqrt(a[g_idx]);
+} // end matSqrt
+
+/* ---------------------------------------------------------------
+matSqrtGPU
+
+Parameters: 
+	a - vector representing matrix A
+	m - rows in matrix A
+	n - cols in matrix A
+
+Calls cuda kernel matSqrt on a.data()
+
+Returns:
+	c - vector representing sqrt A 
+--------------------------------------------------------------- */
+std::vector<double> matSqrtGPU(std::vector<double>& a, int m, int n)
+{
+	double *d_a;
+	std::vector<double> c(m * n);
+	int BLOCKSIZE = m >= 32 || n >= 32 ? 32 : std::max(m, n);	
+
+	cudaMalloc((void **) &d_a, m * n * sizeof(double));
+
+	cudaMemcpy(d_a, a.data(), m * n * sizeof(double), cudaMemcpyHostToDevice);
+	
+	dim3 GRID((n + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
+
+	matSqrt<<<GRID, BLOCK, 0>>>(d_a, m * n); 
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(c.data(), d_a, m * n * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(d_a);
+	
+	return c;
+} // end matSqrtGPU
+
 /* ---------------------------------------------------------------
 matTrans
 

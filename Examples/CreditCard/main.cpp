@@ -23,6 +23,9 @@ int main(int argc, char *argv[]) {
 
 	// make vect of column 2 (age) and column 6 (marital status) 
 	// these are values to predict  
+	// using these values bc they dont imply each other
+	// might have to change network a bit bc 
+	// 	classification might make more sense for marital status
 	for (int i = 0; i < data.size(); i++)
 	{
 		std::vector<double> tmp(2);
