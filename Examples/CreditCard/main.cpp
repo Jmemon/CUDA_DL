@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 	} // end for
 
 	// Note we are not using col 0 here; we don't care about CLIENTNUM
-	// Same for col 2 and 6; thats what were predicting
+	// Same for col 2 and 6; thats what we're predicting
 	for (int i = 0; i < data.size(); i++)
 	{
 		std::vector<double> tmp(21);
@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
 
 		} // end for
 
+		x.push_back(tmp);
 	} // end for
 
 	// Output layer has 2 neurons
@@ -74,7 +75,9 @@ int main(int argc, char *argv[]) {
 
 	Loss err = mse;
 
-	NeuralNet nn(layers, funcs, err);
+	LROptim lr = constant;
+
+	NeuralNet nn(layers, funcs, err, constant);
 
 	return 0;
 }

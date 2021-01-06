@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 	randVect(x);
 	x /= normVect(x);
 
-	std::vector<double> y(10, 1), tmp;
+	std::vector<double> y(10, 310), tmp;
 
 	std::vector<std::vector<double> > FP;
 
@@ -47,18 +47,16 @@ int main(int argc, char *argv[]) {
 	FP = nn.forwardPass(x);
 
 	std::cout << "pred: " << *(FP.end() - 1);
-	std::cout << "actl: " << y;
+	std::cout << "actl: " << y << std::endl;
 
 	std::vector<std::vector<double> > dC;
 	dC = nn.backwardPass(FP, y, x.size() / layers[0]);
 
 	nn.printWeights(2);
 	
-	nn.sgdConstLR(dC, 0.005);
+	nn.sgdADAM(dC);
 
 	nn.printWeights(2);
-
-	std::cout << dC[2];
 
 	return 0;
 }

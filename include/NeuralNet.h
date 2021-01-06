@@ -43,7 +43,7 @@ class NeuralNet {
 		const LROptim alphaAlg;
 		// stores the lr optimizer to use
 
-		std::vector<std::vector<double> > gradWeightedMean;
+		std::vector<std::vector<double> > gradMovingAvg;
 		// the weights average used in adam
 
 		std::vector<std::vector<double> > gradBiasedVariance;

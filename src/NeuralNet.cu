@@ -21,7 +21,7 @@ Randomly initializes weights to values between 0 and 1,
 	We determine the sizes of the weight matrices using the values given in l
 -------------------------------------------------- */
 NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e, LROptim lr) 
-	: layers(l), funcs(f), errFunc(e), alphaAlg(lr), adamIters(0)
+	: layers(l), funcs(f), errFunc(e), alphaAlg(lr), adamIters(1)
 {
 	if (l.size() < 2)
 		throw std::length_error("Network must at least have input and output layer");
@@ -38,7 +38,7 @@ NeuralNet::NeuralNet(std::vector<int> &l, std::vector<Activation> &f, Loss e, LR
 			tmpW[j] = (double)(rand() % 10000) / 10000;
 
 		weights.push_back(tmpW);
-		gradWeightedMean.push_back(tmpMV);
+		gradMovingAvg.push_back(tmpMV);
 		gradBiasedVariance.push_back(tmpMV);
 	} // end for
 
@@ -448,11 +448,57 @@ __global__ void updateWeightsVect(double *W, double *dC, double *alpha, int len)
 } // end updateWeightsVect
 
 /* ----------------------------------------------
+updateWeightsVectGPU
+
+Parameters:
+	W - matrix of weights to update
+	dC - matrix of weight grads
+	alpha - matrix of alphas
+	len - length of each vect as matrix	
+
+Calls updateWeightsVect cuda kernel
+
+Returns:
+	W - the updated matrix of weights
+---------------------------------------------- */
+std::vector<double> updateWeightsVectGPU(std::vector<double>& W, std::vector<double>& dC, std::vector<double>& alpha, int len)
+{
+	double *d_W, *d_dC, *d_alpha;
+	int BLOCKSIZE = len >= 512 ? 512 : len;
+
+	cudaMalloc((void **) &d_W, len * sizeof(double));
+	cudaMalloc((void **) &d_dC, len * sizeof(double));
+	cudaMalloc((void **) &d_alpha, len * sizeof(double));
+
+	cudaMemcpy(d_W, W.data(), len * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_dC, dC.data(), len * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_alpha, alpha.data(), len * sizeof(double), cudaMemcpyHostToDevice);
+
+	dim3 GRID((len + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE);
+
+	updateWeightsVect<<<GRID, BLOCK, 0>>>(d_W, d_dC, d_alpha, len);
+
+	cudaMemcpy(W.data(), d_W, len * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(d_W);
+	cudaFree(d_dC);
+	cudaFree(d_alpha);
+
+	return W;
+} // end updateWeightsVectGPU
+
+/* ----------------------------------------------
 sgdAdam
 
 Parameters:
+	dC - dC/dW
+	alpha - value of alpha to rescale (default = 0.001)
+	beta1 - moving avg window (default = 0.9)
+	beta2 - biased variance window (default = 0.999)
+	epsilon - avoid division by zero (default = 10e-8)
 
-s
+Uses adam algorithm to optimize alpha for weight update
 ---------------------------------------------- */
 void NeuralNet::sgdADAM(std::vector<std::vector<double> >& dC, double alpha, double beta1, double beta2, double epsilon)
 {
@@ -461,14 +507,15 @@ void NeuralNet::sgdADAM(std::vector<std::vector<double> >& dC, double alpha, dou
 
 	for (int i = 0; i < dC.size(); i++)
 	{
+		// get g^2 for biased variance
 		gSqr = hadamardGPU(dC[i], dC[i], layers[i + 1], layers[i]);
 
-		tmp1 = scalarMultGPU(gradWeightedMean[i], beta1, layers[i + 1], layers[i]);
+		tmp1 = scalarMultGPU(gradMovingAvg[i], beta1, layers[i + 1], layers[i]);
 		tmp2 = scalarMultGPU(dC[i], (1 - beta1), layers[i + 1], layers[i]);
-		gradWeightedMean[i] = matAddGPU(tmp1, tmp2, layers[i + 1], layers[i]);
+		gradMovingAvg[i] = matAddGPU(tmp1, tmp2, layers[i + 1], layers[i]);
 		
 		pwr = std::pow(beta1, adamIters);
-		corrM = scalarMultGPU(gradWeightedMean[i], 1.0 / (1 - pwr), layers[i + 1], layers[i]);
+		corrM = scalarMultGPU(gradMovingAvg[i], 1.0 / (1 - pwr), layers[i + 1], layers[i]);
 
 		tmp1 = scalarMultGPU(gradBiasedVariance[i], beta2, layers[i + 1], layers[i]);
 		tmp2 = scalarMultGPU(gSqr, (1 - beta2), layers[i + 1], layers[i]);
@@ -485,28 +532,7 @@ void NeuralNet::sgdADAM(std::vector<std::vector<double> >& dC, double alpha, dou
 		tmp1 = scalarMultGPU(tmp1, alpha, layers[i + 1], layers[i]);
 		eps.clear();
 
-		// calling updateWeightsVect kernel
-		double *d_W, *d_dC, *d_alpha;
-		int BLOCKSIZE = layers[i + 1] * layers[i] >= 512 ? 512 : layers[i + 1] * layers[i];
-
-		cudaMalloc((void **) &d_W, layers[i + 1] * layers[i] * sizeof(double));
-		cudaMalloc((void **) &d_dC, layers[i + 1] * layers[i] * sizeof(double));
-		cudaMalloc((void **) &d_alpha, layers[i + 1] * layers[i] * sizeof(double));
-
-		cudaMemcpy(d_W, weights[i].data(), layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyHostToDevice);
-		cudaMemcpy(d_dC, corrM.data(), layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyHostToDevice);
-		cudaMemcpy(d_alpha, tmp1.data(), layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyHostToDevice);
-
-		dim3 GRID((layers[i + 1] * layers[i] + BLOCKSIZE - 1) / BLOCKSIZE);
-		dim3 BLOCK(BLOCKSIZE);
-
-		updateWeightsVect<<<GRID, BLOCK, 0>>>(d_W, d_dC, d_alpha, layers[i + 1] * layers[i]);
-
-		cudaMemcpy(weights[i].data(), d_W, layers[i + 1] * layers[i] * sizeof(double), cudaMemcpyDeviceToHost);
-
-		cudaFree(d_W);
-		cudaFree(d_dC);
-		cudaFree(d_alpha);
+		weights[i] = updateWeightsVectGPU(weights[i], corrM, tmp1, layers[i + 1] * layers[i]);
 	} // end for
 	
 	adamIters += 1;
@@ -635,6 +661,8 @@ void NeuralNet::printNN() const
 		default:
 			throw std::domain_error("printNN: Alpha optimizer not implemented");
 	} // end swithc
+
+	std::cout << std::endl;
 
 } // end printNN
 
