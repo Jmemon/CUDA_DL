@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 	// Same for col 2 and 6; thats what we're predicting
 	for (int i = 0; i < data.size(); i++)
 	{
-		std::vector<double> tmp(21);
+		std::vector<double> tmp(20);
 		for (int j = 0; j < data[i].size(); j++)
 		{
 			if (j == 0)
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
 	// Output layer has 2 neurons
 	// Input layer has 20 neurons
-	
+
 	std::vector<int> layers(4);
 	layers[0] = 20;
 	layers[1] = 300;
@@ -75,9 +75,36 @@ int main(int argc, char *argv[]) {
 
 	Loss err = mse;
 
-	LROptim lr = constant;
+	LROptim lr = adam;
 
-	NeuralNet nn(layers, funcs, err, constant);
+	NeuralNet nn(layers, funcs, err, lr); 
+
+	std::vector<std::vector<double> > x_train(x.begin(), x.begin() + 8000), y_train(y.begin(), y.begin() + 8000);
+	std::vector<std::vector<double> > x_test(x.begin() + 8000, x.end()), y_test(y.begin() + 8000, y.end());
+	std::vector<double> errs;
+
+	/*for (int i = 0; i < x_test.size(); i++)
+	{
+		double tmp = nn.calcLoss(x_test[i], y_test[i]);
+		errs.push_back(tmp);
+	} // end for
+
+	std::cout << errs;
+	errs.clear(); */
+
+	nn.printWeights(2);
+
+	nn.train(x_train, y_train, 1);
+
+	nn.printWeights(2);
+
+	/*for (int i = 0; i < x_test.size(); i++)
+	{
+		double tmp = nn.calcLoss(x_test[i], y_test[i]);
+		errs.push_back(tmp);
+	} // end for
+
+	std::cout << errs; */
 
 	return 0;
 }

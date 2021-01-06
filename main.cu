@@ -15,35 +15,69 @@ void operator/= (std::vector<double> &x, double c);
 
 int main(int argc, char *argv[]) {
 
-	// batch_size = 10
-
-	std::vector<double> x(5000);
-	randVect(x);
-	x /= normVect(x);
-
-	std::vector<double> y(10, 310), tmp;
-
-	std::vector<std::vector<double> > FP;
-
 	std::vector<int> layers;
-	std::vector<Activation> funcs;
-
 	layers.push_back(500);
 	layers.push_back(100);
 	layers.push_back(10);
 	layers.push_back(1);
 
+	std::vector<Activation> funcs;
 	funcs.push_back(sigmoid);
 	funcs.push_back(leaky_relu);
 	funcs.push_back(relu);
 
 	Loss lFunc = logLoss;
-
 	LROptim lr = adam;
 
 	NeuralNet nn(layers, funcs, lFunc, lr);
-
 	nn.printNN();
+
+	int samples = 100;
+	int batch_size = 50;
+	int input_neurons = 500;
+	int output_neurons = 1;
+
+	std::vector<std::vector<double> > x(samples), x_test(10);
+	for (int i = 0; i < x.size(); i++)
+	{
+		std::vector<double> tmp(batch_size * input_neurons);
+		x[i] = tmp;
+		randVect(x[i]);
+
+		if (i < 10)
+		{
+			std::vector<double> tmp1(batch_size * input_neurons);
+			x_test[i] = tmp1;
+			randVect(x_test[i]);
+		} // end if 
+
+	} // end for
+
+	std::vector<std::vector<double> > y(samples), y_test(10);
+	for (int i = 0; i < y.size(); i++)
+	{
+		std::vector<double> tmp(batch_size * output_neurons);
+		y[i] = tmp;
+		randVect(y[i]);
+
+		if (i < 10)
+		{
+			std::vector<double> tmp1(batch_size * output_neurons);
+			y_test[i] = tmp1;
+			randVect(y_test[i]);
+		} // end if 
+
+	} // end for
+
+	double err = nn.calcLoss(x[0], y[0]);
+	std::cout << "err: " << err << std::endl;
+
+	nn.train(x, y, batch_size);
+
+	err = nn.calcLoss(x[0], y[0]);
+	std::cout << "err: " << err << std::endl;
+
+	/*
 	FP = nn.forwardPass(x);
 
 	std::cout << "pred: " << *(FP.end() - 1);
@@ -57,7 +91,7 @@ int main(int argc, char *argv[]) {
 	nn.sgdADAM(dC);
 
 	nn.printWeights(2);
-
+	*/
 	return 0;
 }
 

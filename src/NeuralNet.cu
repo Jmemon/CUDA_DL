@@ -169,34 +169,34 @@ Returns:
 double NeuralNet::calcLoss(std::vector<double>& x, std::vector<double>& y)
 {
 	// -- Error Check --------------------------------------------------------
-	double tmp1 = (double)(x.size()) / (double)(layers[layers.size() - 1]);
-	double tmp2 = (double)(y.size()) / (double)(layers[layers.size() - 1]);
+	double tmp1 = (double)(x.size()) / (double)(layers.front());
+	double tmp2 = (double)(y.size()) / (double)(layers.back());
 
 	if (tmp1 < 1.0) 
 	{
 		char msg [100];
-		std::sprintf(msg, "User Output Size: %lud ; NN Output Size: %d", x.size(), layers[layers.size() - 1]);
+		std::sprintf(msg, "User Input Size: %lud ; NN Input Size: %d", x.size(), layers.front());
 		throw std::length_error(msg);
 	} // end if
 	
 	if (tmp2 < 1.0) 
 	{
 		char msg [100];
-		std::sprintf(msg, "User Output Size: %lud ; NN Output Size: %d", y.size(), layers[layers.size() - 1]);
+		std::sprintf(msg, "User Output Size: %lud ; NN Output Size: %d", y.size(), layers.back());
 		throw std::length_error(msg);
 	} // end if
 
 	if (std::floor(tmp1) != tmp1)
 	{
 		char msg [100];
-		std::sprintf(msg, "Too many/few Input Args (out_size / nn_out_size = %f)", tmp1);
+		std::sprintf(msg, "Too many/few Input Args (In Size / NN In Size = %f)", tmp1);
 		throw std::length_error(msg);
 	} // end if
 
 	if (std::floor(tmp2) != tmp2)
 	{
 		char msg [100];
-		std::sprintf(msg, "Too many/few Input Args (out_size / nn_out_size = %f)", tmp2);
+		std::sprintf(msg, "Too many/few Input Args (Out Size / NN Out Size = %f)", tmp2);
 		throw std::length_error(msg);
 	} // end if
 	// ----------------------------------------------------------------------
@@ -592,7 +592,11 @@ void NeuralNet::train(std::vector<std::vector<double> >& x, std::vector<std::vec
 				throw std::domain_error("train: this lr optimizer isn't implemented");
 		} // end switch
 
+		std::cout << "Batch " << i + 1 << "/" << x.size() << "\r";
+
 	} // end for
+
+	std::cout << std::endl;
 
 } // end train
 
