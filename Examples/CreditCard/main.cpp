@@ -90,8 +90,8 @@ int main(int argc, char *argv[]) {
 	} // end for
 
 	std::cout << errs;
-	errs.clear(); */
-
+	errs.clear();
+	*/
 	nn.printWeights(2);
 
 	nn.train(x_train, y_train, 1);
@@ -104,8 +104,8 @@ int main(int argc, char *argv[]) {
 		errs.push_back(tmp);
 	} // end for
 
-	std::cout << errs; */
-
+	std::cout << errs;
+*/
 	return 0;
 }
 

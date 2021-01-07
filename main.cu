@@ -27,12 +27,12 @@ int main(int argc, char *argv[]) {
 	funcs.push_back(relu);
 
 	Loss lFunc = logLoss;
-	LROptim lr = adam;
+	LROptim lr = constant;
 
 	NeuralNet nn(layers, funcs, lFunc, lr);
 	nn.printNN();
 
-	int samples = 100;
+	int samples = 50;
 	int batch_size = 50;
 	int input_neurons = 500;
 	int output_neurons = 1;
@@ -69,13 +69,17 @@ int main(int argc, char *argv[]) {
 
 	} // end for
 
-	double err = nn.calcLoss(x[0], y[0]);
-	std::cout << "err: " << err << std::endl;
+	//double err = nn.calcLoss(x[0], y[0]);
+	//std::cout << "err: " << err << std::endl;
+
+	nn.printWeights(2);
 
 	nn.train(x, y, batch_size);
 
-	err = nn.calcLoss(x[0], y[0]);
-	std::cout << "err: " << err << std::endl;
+	nn.printWeights(2);
+
+	//err = nn.calcLoss(x[0], y[0]);
+	//std::cout << "err: " << err << std::endl;
 
 	/*
 	FP = nn.forwardPass(x);

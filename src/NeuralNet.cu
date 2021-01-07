@@ -3,10 +3,12 @@
 #include "../include/Matrix.cuh"
 #include "../include/Loss.cuh"
 #include <iostream>
-#include <cmath>
+#include <math.h>
 #include <stdio.h>
+#include <assert.h>
 #include <exception>
 #include <vector>
+#include <algorithm>
 
 /* -------------------------------------------------- 
 Constructor 
@@ -382,9 +384,7 @@ __global__ void updateWeights(double *W, double *dC, double alpha, int len)
 	int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (idx < len)
-	{
 		W[idx] = W[idx] - alpha * dC[idx];
-	} // end if
 
 } // end updateWeights
 
@@ -399,11 +399,27 @@ Updates using vanilla grad descent approach
 
 Far better implementation is Adam
 ---------------------------------------------- */
-void NeuralNet::sgdConstLR(std::vector<std::vector<double> >& dC, double alpha)
+/*void NeuralNet::sgdConstLR(std::vector<std::vector<double> >& dC, double alpha)
 {
+	// --- Error Check -----------------------------
+	if (weights.size() != dC.size())
+		throw std::length_error("sgdConstLR: Invalid Size for dC");
+
 	for (int i = 0; i < dC.size(); i++)
 	{
-		double *d_W, *d_dC;
+		if (weights[i].size() != dC[i].size())
+			throw std::length_error("sgdConstLR: Invalid Size for some dC[i]");
+
+	} // end for
+
+	if (alpha == 0)
+		throw std::domain_error("sgdConstLR: alpha cannot be zero");
+	// ---------------------------------------------
+
+	double *d_W, *d_dC;
+
+	for (int i = 0; i < dC.size(); i++)
+	{
 		int BLOCKSIZE = dC[i].size() >= 512 ? 512 : dC[i].size();
 
 		cudaMalloc((void **) &d_W, weights[i].size() * sizeof(double));
@@ -424,6 +440,26 @@ void NeuralNet::sgdConstLR(std::vector<std::vector<double> >& dC, double alpha)
 	} // end for
 
 } // end updateWeightsGPU
+*/
+
+void NeuralNet::sgdConstLR(std::vector<std::vector<double> >& dC, double alpha)
+{
+	for (int i = 0; i < weights.size(); i++)
+	{
+		for (int j = 0; j < weights[i].size(); j++)
+		{
+			std::cout << "preWeight[i][j]: " << weights[i][j] << std::endl;
+			weights[i][j] = weights[i][j] - alpha * dC[i][j];
+			std::cout << "postWeight[i][j]: " << weights[i][j] << std::endl;
+			std::cout << "alpha: " << alpha;
+			std::cout << " ; grad: " << dC[i][j] << std::endl;
+			assert(!isnan(weights[i][j]));
+		}
+	} // end for
+
+	printWeights(2);
+
+} // end sgdConstLR
 
 /* ----------------------------------------------
 updateWeightsVect
@@ -502,6 +538,27 @@ Uses adam algorithm to optimize alpha for weight update
 ---------------------------------------------- */
 void NeuralNet::sgdADAM(std::vector<std::vector<double> >& dC, double alpha, double beta1, double beta2, double epsilon)
 {
+	// --- Error Check -----------------------------
+	if (weights.size() != dC.size())
+		throw std::length_error("sgdADAM: Invalid Size for dC");
+
+	for (int i = 0; i < dC.size(); i++)
+	{
+		if (weights[i].size() != dC[i].size())
+			throw std::length_error("sgdADAM: Invalid Size for some dC[i]");
+
+	} // end for
+
+	if (alpha == 0)
+		throw std::domain_error("sgdADAM: alpha cannot be zero");
+
+	if (beta1 >= 1 || beta2 >= 1)
+		throw std::domain_error("sgdADAM: betas should be between 0 and 1");
+
+	if (epsilon < -10e-3 || epsilon > 10e-3)
+		throw std::domain_error("sgdADAM: epsilon should be very small");
+	// ---------------------------------------------
+
 	double pwr;
 	std::vector<double> tmp1, tmp2, gSqr, corrM, corrV, eps;
 
