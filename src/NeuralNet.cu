@@ -332,6 +332,7 @@ std::vector<std::vector<double> > NeuralNet::backwardPass(std::vector<std::vecto
 
 		// adjust gradients for batch_size
 		*it_dC = scalarMultGPU(*it_dC, 1.0/(double)(batch_size), *it_layers, *(it_layers - 1));
+		assert(!isnan((*it_dC)[0]));
 
 		// decrement iterators
 		it_FP -= 1;
@@ -448,11 +449,7 @@ void NeuralNet::sgdConstLR(std::vector<std::vector<double> >& dC, double alpha)
 	{
 		for (int j = 0; j < weights[i].size(); j++)
 		{
-			std::cout << "preWeight[i][j]: " << weights[i][j] << std::endl;
 			weights[i][j] = weights[i][j] - alpha * dC[i][j];
-			std::cout << "postWeight[i][j]: " << weights[i][j] << std::endl;
-			std::cout << "alpha: " << alpha;
-			std::cout << " ; grad: " << dC[i][j] << std::endl;
 			assert(!isnan(weights[i][j]));
 		}
 	} // end for
