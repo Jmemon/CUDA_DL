@@ -15,7 +15,7 @@ Paramters:
 
 Assumes strings to be removes are on ends of string
 Takes string with quotes within string and removes them
----------------------------------------------- */
+--------------------------------------------- */
 void removeQuotesEnd(std::string& str)
 {
 	if (str.find("\"") == std::string::npos)
