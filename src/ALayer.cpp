@@ -4,6 +4,7 @@
 #include <vector>
 #include <deque>
 #include <exception>
+#include <assert>
 
 // TODO: Figure out how to initialize inputs to empty vector of vectors
 ALayer::ALayer() : act(relu), layerSize(100) {
@@ -17,7 +18,7 @@ ALayer::ALayer(int layerSize, Activation act) {
 }
 
 std::vector<double> activation(std::vector<double> in, Activation act, bool diff) {
-	std::vector<double> out(in.size);
+	std::vector<double> out(in.size());
 
 	switch(act) {
 		binary_step:
@@ -38,14 +39,18 @@ std::vector<double> activation(std::vector<double> in, Activation act, bool diff
 }
 
 std::vector<double> ALayer::forwardPropagation(std::vector<double> in) {
+	assert(in.size() == layerSize);
+
 	inputs.push_back(in);
 	return activation(in, act, false);
 }
 
 std::vector<double> ALayer::backPropagation(std::vector<double> delta) {
-	std::vector<double> prime(delta.size());
+	assert(delta.size() == layerSize);
+
+	std::vector<double> prime(layerSize);
 	std::vector in(inputs.pop_front());
 
 	prime = activation(in, act, true);
-	return hadamardGPU(prime, delta, delta.size(), 1);
+	return hadamardGPU(prime, delta, layerSize, 1);
 }
