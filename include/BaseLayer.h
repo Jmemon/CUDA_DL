@@ -6,10 +6,13 @@
 class Layer {
 
 	public:
-		
-		forwardPropagation() { throw std::exception("NotImplementedError"); }
+		forwardPropagation() { 
+			throw std::exception("NotImplementedError"); 
+		}
 
-		backPropagation();
+		backPropagation() {
+			throw std::exception("NotImplementedError");
+		}
 
 }
 
