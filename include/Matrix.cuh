@@ -8,7 +8,7 @@
 // calls matrix multiplication cuda kernel
 std::vector<double> matMulGPU(std::vector<double>& a, std::vector<double>& b, int m, int n, int k);
 
-// calls scalar multiplicatoin cuda kernel
+// calls scalar multiplication cuda kernel
 std::vector<double> scalarMultGPU(std::vector<double>& a, double c, int m, int n);
 
 // calls hadamard cuda kernel
