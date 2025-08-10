@@ -1,4 +1,4 @@
-#include "../include/Matrix.cuh"
+#include "../../include/kernels/matrix.cuh"
 #include <vector>
 #include <algorithm> // std::max
 

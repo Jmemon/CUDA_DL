@@ -1,4 +1,4 @@
-#include "../include/Loss.cuh"
+#include "../../include/kernels/loss.cuh"
 #include <vector>
 #include <thrust/transform.h>
 #include <thrust/device_vector.h>

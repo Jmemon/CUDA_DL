@@ -1,4 +1,4 @@
-#include "../include/Activation.cuh"
+#include "../../include/kernels/activation.cuh"
 #include <vector>
 
 /* ----------------------------------------------
@@ -18,59 +18,6 @@ __device__ double maxGPU(double a, double b)
 	bool sel = (a <= b);
 	return (double)(sel) * b + (double)(1 - sel) * a;
 } // end maxGPU
-
-/* ----------------------------------------------
-binaryStep
-
-Parameters:
-	x - vector to apply activation to, can be matrix in row-major form
-	len - length of x
-
-Applies binaryStep to every element of x
----------------------------------------------- */
-__global__ void binaryStep(double *x, int len) 
-{
-	int idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-	if (idx >= len)
-		return;
-
-	x[idx] = (int)(x[idx] >= 0) % 2;	// if val is ≥ 0, its 1 ; if < 0, its 0
-} // end binaryStep
-
-/* ----------------------------------------------
-binaryStepGPU
-
-Parameters:
-	z - vector to apply activation to, can be matrix in row-major form
-
-calls binaryStep cuda kernel on z.data()
-
-Returns:
-	a - activated z, (f(z))
----------------------------------------------- */
-std::vector<double> binaryStepGPU(std::vector<double>& z)
-{
-	double *d_z;
-	std::vector<double> a(z.size());
-	int BLOCKSIZE = z.size() >= 512 ? 512 : z.size();
-
-	cudaMalloc((void **) &d_z, z.size() * sizeof(double));
-	
-	cudaMemcpy(d_z, z.data(), z.size() * sizeof(double), cudaMemcpyHostToDevice);
-
-	dim3 GRID((z.size() + BLOCKSIZE - 1) / BLOCKSIZE);
-	dim3 BLOCK(BLOCKSIZE);
-
-	binaryStep<<<GRID, BLOCK, 0>>>(d_z, z.size());
-	cudaDeviceSynchronize();
-
-	cudaMemcpy(a.data(), d_z, z.size() * sizeof(double), cudaMemcpyDeviceToHost);
-
-	cudaFree(d_z);
-
-	return a;
-} // binaryStepGPU
 
 /* ----------------------------------------------
 sigmoid

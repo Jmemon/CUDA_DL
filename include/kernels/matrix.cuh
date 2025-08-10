@@ -3,7 +3,7 @@
 
 #include <vector>
 
-// More detailed information on each function is in src/Matrix.cu
+// More detailed information on each function is in src/kernels/matrix.cu
 
 // calls matrix multiplication cuda kernel
 std::vector<double> matMulGPU(std::vector<double>& a, std::vector<double>& b, int m, int n, int k);

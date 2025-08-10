@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 	int input_neurons = 500;
 	int output_neurons = 1;
 
-	std::vector<std::vector<double> > x(samples), x_test(10);
+	std::vector<std::vector<double>> x(samples), x_test(10);
 	for (int i = 0; i < x.size(); i++)
 	{
 		std::vector<double> tmp(batch_size * input_neurons);
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 
 	} // end for
 
-	std::vector<std::vector<double> > y(samples), y_test(10);
+	std::vector<std::vector<double>> y(samples), y_test(10);
 	for (int i = 0; i < y.size(); i++)
 	{
 		std::vector<double> tmp(batch_size * output_neurons);
