@@ -1,6 +1,6 @@
-# CudaNeuralNet
+# CUDA Deep Learning
 
-This is a simple neural network implementation using CUDA.
+This is a simple accelerated neural network implementation using CUDA.
 
 ## Building the Project
 
@@ -44,3 +44,10 @@ To remove the compiled object files and the final executable:
 make clean
 ```
 
+## Setting up a Remote Instance
+```bash
+git clone https://github.com/Jmemon/CUDA_DL.git
+apt-get update
+apt install npm
+npm install -g @anthropic-ai/claude-code
+```
