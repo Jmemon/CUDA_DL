@@ -3,6 +3,87 @@
 #include <algorithm> // std::max
 
 /* ---------------------------------------------------------------
+affineTransformGPU
+
+Parameters: 
+	x - double ptr representing matrix X in row-major form
+	weights - double ptr representing matrix W in row-major form
+	bias - double ptr representing matrix B in row-major form
+	m - rows in X
+	n - cols in X
+	k - cols in W
+
+Performs affine transformation: XW^T + B
+--------------------------------------------------------------- */
+__global__ void affineTransform(double *x, double *weights, double *bias, double *output, int m, int n, int k)
+{
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	double sum = 0.0;
+	
+	if (row >= m || col >= k)
+		return;
+	
+	if (col < k && row < m)
+	{
+		for (int i = 0; i < n; i++)
+			sum += x[row * n + i] * weights[i * k + col];
+	}
+	
+	output[row * k + col] = sum + bias[col];
+} // end affineTransform
+
+/* ---------------------------------------------------------------
+affineTransformGPU
+
+Parameters: 
+	x - vector representing matrix X
+	weights - vector representing matrix W
+	bias - vector representing matrix B
+	m - rows in X
+	n - cols in X
+	k - cols in W
+
+Calls cuda kernel affineTransform on x.data(), weights.data(), and bias.data()
+
+Returns:
+	output - vector representing XW^T + B (has dim m x k)
+--------------------------------------------------------------- */
+std::vector<double> affineTransformGPU(std::vector<double>& x, std::vector<double>& weights, std::vector<double>& bias, int m, int n, int k)
+{
+	double *d_x, *d_weights, *d_bias, *d_output;
+	std::vector<double> output(m * k);
+	int BLOCKSIZE = m >= 32 || k >= 32 ? 32 : std::max(m, k);
+	
+	size_t SIZE = m * n * sizeof(double);
+	
+	cudaMalloc((void **) &d_x, SIZE);
+	cudaMalloc((void **) &d_weights, SIZE);
+	cudaMalloc((void **) &d_bias, k * sizeof(double));
+	cudaMalloc((void **) &d_output, m * k * sizeof(double));
+
+	cudaMemcpy(d_x, x.data(), SIZE, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_weights, weights.data(), SIZE, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_bias, bias.data(), k * sizeof(double), cudaMemcpyHostToDevice);
+
+	dim3 GRID((k + BLOCKSIZE - 1) / BLOCKSIZE, (m + BLOCKSIZE - 1) / BLOCKSIZE);
+	dim3 BLOCK(BLOCKSIZE, BLOCKSIZE);
+
+	affineTransform<<<GRID, BLOCK, 0>>>(d_x, d_weights, d_bias, d_output, m, n, k);
+	cudaDeviceSynchronize();
+
+	cudaMemcpy(output.data(), d_output, m * k * sizeof(double), cudaMemcpyDeviceToHost);
+
+	cudaFree(d_x);
+	cudaFree(d_weights);
+	cudaFree(d_bias);
+	cudaFree(d_output);
+
+	return output;
+} // end affineTransformGPU
+
+
+/* ---------------------------------------------------------------
 matMul
 
 Parameters: 

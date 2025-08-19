@@ -5,6 +5,9 @@
 
 // More detailed information on each function is in src/kernels/matrix.cu
 
+// Calls affine transformation cuda kernel
+std::vector<double> affineTransformGPU(std::vector<double>& x, std::vector<double>& weights, std::vector<double>& bias, int m, int n, int k);
+
 // calls matrix multiplication cuda kernel
 std::vector<double> matMulGPU(std::vector<double>& a, std::vector<double>& b, int m, int n, int k);
 
