@@ -1,0 +1,1 @@
+And we also work out how to give adam the ability to store moment estimates for gradient updates, and how to update the weights.
